@@ -29,10 +29,6 @@ contract DKGManager is Ownable {
     // the block number at which the dkg started
     uint private deal_block = 0;
 
-    constructor() {
-
-    }
-
     // event emitted when the DKG is ready to start
     event DKGStart();
 
