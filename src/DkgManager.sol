@@ -12,10 +12,21 @@ contract DKGManager is Ownable {
         address ethKey;
         uint256 bn254Key;
     }
-    enum Status {
-        CREATED,
+    enum PHASE {
+        INIT,
         REGISTRATION,
-        DKG_PROGRESS
+        DEAL
+    }
+
+    uint256 public init_time;
+    uint256 public registration_time;
+    uint256 public deal_time;
+
+    function isInRegistrationPhase() public view returns (bool) {
+        return block.number > init_time && block.number < registration_time;
+    }
+    function isInDealPhase() public view returns (bool) {
+        return block.number > registration_time && block.number < deal_time;
     }
 
     // list of participants, indexed by their eth key and value is their temporary DKG key
@@ -23,19 +34,18 @@ contract DKGManager is Ownable {
     mapping (address => uint256) private deal_hashes;
     // number of users registered
     uint nbRegistered = 0;
-    // current status of the DKG - Note that once the DKG has started, the phases are evolving 
-    // by themselves just with the block number increasing.
-    Status private status = Status.CREATED;
-    // the block number at which the dkg started
-    uint private deal_block = 0;
-
     // event emitted when the DKG is ready to start
-    event DKGStart();
+    event NewParticipant(address from, uint256 tmpKey);
 
-    
+
+    constructor()  Ownable() {
+        init_time = block.number; 
+        registration_time = init_time + BLOCKS_PER_PHASE;
+        deal_time = registration_time + BLOCKS_PER_PHASE;
+    }
     // TODO make it payable in a super contract
     function registerParticipant(uint256 _tmpKey) public {
-        require(status == Status.REGISTRATION, "You can not register yet!");
+        require(isInRegistrationPhase(), "You can not register yet!");
         require(nbRegistered < MAX_PARTICIPANTS, 
             "too many participants registered");
         // TODO check for BN128 subgroup instead
@@ -44,29 +54,15 @@ contract DKGManager is Ownable {
         require(nodes[msg.sender] == 0, "Already registered participant");
         nbRegistered++;
         nodes[msg.sender] = _tmpKey;
+        emit NewParticipant(msg.sender,_tmpKey);
     }
 
     function numberParticipants() public view returns (uint256) {
         return nbRegistered;
     }
 
-    function startRegistration() public onlyOwner {
-        require(status == Status.CREATED,"Invalid state transition to REGISTRATION");
-        status = Status.REGISTRATION;
-    }
-    // startDKG sets the status such that participants can now submit their deals 
-    // onchain
-    function startDKG() public onlyOwner {
-        require(status == Status.REGISTRATION,"Invalid state transition to DKG_DEALS");
-        // TODO check for a threshold of nodes present
-        status = Status.DKG_PROGRESS;
-        deal_block = block.number;
-    }
-
     function submitDeal(uint256[2][] memory _encrypted_shares,uint256[] memory _commitment) public isRegistered {
-        require(status == Status.DKG_PROGRESS,"DKG has not started yet");
-        require(block.number > deal_block,"Something is off with the beginning of the DKG");
-        require(block.number < next_phase(deal_block),"Too late to submit deal");
+        require(isInDealPhase(),"DKG has not started yet");
 
         // 1. Check he submitted enough encrypted shares
         // We expect the dealer to submit his own too.
@@ -78,10 +74,6 @@ contract DKGManager is Ownable {
         // 3. Compute and store the hash
         bytes32 comm = sha256(abi.encodePacked(_encrypted_shares,_commitment));
         deal_hashes[msg.sender] = uint256(comm);
-    }
-
-    function next_phase(uint start) public pure returns (uint) {
-        return start + uint(BLOCKS_PER_PHASE);
     }
 
     function threshold() public view returns (uint) {

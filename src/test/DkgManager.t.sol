@@ -5,6 +5,7 @@ import "../DkgManager.sol";
 import "ds-test/test.sol";
 
 interface CheatCodes {
+  function roll(uint256) external;
   function prank(address) external;
   function expectRevert(bytes calldata) external;
 }
@@ -24,21 +25,15 @@ contract DKGTest is DSTest {
     function testStatus() public {
         testing.expectRevert(bytes("You can not register yet!"));
         manager.registerParticipant(1);
-        manager.startRegistration();
+        // we only accept registering after one block
+        testing.roll(block.number + 1);
         manager.registerParticipant(1);
-        testing.expectRevert(bytes("Invalid state transition to REGISTRATION"));
-        manager.startRegistration();
-        manager.startDKG();
-        testing.expectRevert(bytes("Invalid state transition to DKG_DEALS"));
-        manager.startDKG();
-
-
     }
 
 
 
     function testRegister() public {
-        manager.startRegistration();
+        testing.roll(block.number + 1);
         assertEq(manager.numberParticipants(),0);
         manager.registerParticipant(1); // key != 0
         testing.expectRevert(
