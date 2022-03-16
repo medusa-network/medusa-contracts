@@ -50,7 +50,7 @@ contract DKGManager is Ownable {
             "too many participants registered");
         // TODO check for BN128 subgroup instead
         require(_tmpKey != 0, "Invalid key");
-        // TODO check for uniqueness of the key
+        // TODO check for uniqueness of the key as well
         require(nodes[msg.sender] == 0, "Already registered participant");
         nbRegistered++;
         nodes[msg.sender] = _tmpKey;
