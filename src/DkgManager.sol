@@ -43,7 +43,8 @@ contract DKGManager is Ownable {
     // event emitted when the DKG is ready to start
     event NewParticipant(address from, uint32 index, uint256 tmpKey);
     event DealBundleSubmitted(address from, uint256[3][] shares,uint256[] commitment);
-
+    event ValidComplaint(address from, uint32 evicted);
+    
     constructor()  Ownable() {
         init_time = block.number; 
         registration_time = init_time + BLOCKS_PER_PHASE;
@@ -89,8 +90,9 @@ contract DKGManager is Ownable {
         emit DealBundleSubmitted(msg.sender, _encrypted_shares, _commitment);
     }
 
-    function submitComplaintBundle() public pure {
+    function submitComplaintBundle() public {
         // TODO
+        emit ValidComplaint(msg.sender, 0);
     }
 
     // Returns the list of indexes of QUALIFIED participants at the end of the DKG.
