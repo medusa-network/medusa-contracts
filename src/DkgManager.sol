@@ -75,7 +75,7 @@ contract DKGManager is Ownable {
     }
 
     function submitDealBundle(uint256[3][] memory _encrypted_shares,uint256[] memory _commitment) public isRegistered {
-        require(isInDealPhase(),"DKG has not started yet");
+        require(isInDealPhase(),"DKG is not in the deal phase");
         // 1. Check he submitted enough encrypted shares
         // We expect the dealer to submit his own too.
         // TODO : do we have too ?
