@@ -42,7 +42,7 @@ contract DKGManager is Ownable {
     uint32 nbRegistered = 0;
     // event emitted when the DKG is ready to start
     event NewParticipant(address from, uint32 index, uint256 tmpKey);
-    event DealBundleSubmitted(address from, uint256[3][] shares,uint256[] commitment);
+    event DealBundleSubmitted(uint256 dealer_idx, uint256[3][] encrypted_shares,uint256[] commitment);
     event ValidComplaint(address from, uint32 evicted);
     
     constructor()  Ownable() {
@@ -87,7 +87,7 @@ contract DKGManager is Ownable {
         bytes32 comm = sha256(abi.encodePacked(_encrypted_shares,_commitment));
         deal_hashes[indexOfSender()] = uint256(comm);
         // 4. emit event 
-        emit DealBundleSubmitted(msg.sender, _encrypted_shares, _commitment);
+        emit DealBundleSubmitted(indexOfSender(), _encrypted_shares, _commitment);
     }
 
     function submitComplaintBundle() public {
