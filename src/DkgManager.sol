@@ -8,66 +8,74 @@ contract DKGManager is Ownable {
     uint16 constant public MAX_PARTICIPANTS = 1000;
     // how many rounds/blocks compose one DKG phase
     uint8 constant public BLOCKS_PER_PHASE = 10;
-    struct Node {
-        address ethKey;
-        uint256 bn254Key;
-    }
-    enum Status {
-        CREATED,
+    enum PHASE {
+        INIT,
         REGISTRATION,
-        DKG_PROGRESS
+        DEAL
     }
 
-    // list of participants, indexed by their eth key and value is their temporary DKG key
-    mapping (address => uint256) private nodes;
-    mapping (address => uint256) private deal_hashes;
-    // number of users registered
-    uint nbRegistered = 0;
-    // current status of the DKG - Note that once the DKG has started, the phases are evolving 
-    // by themselves just with the block number increasing.
-    Status private status = Status.CREATED;
-    // the block number at which the dkg started
-    uint private deal_block = 0;
+    uint256 public init_time;
+    uint256 public registration_time;
+    uint256 public deal_time;
+    uint256 public complaint_time;
 
+    function isInRegistrationPhase() public view returns (bool) {
+        return block.number > init_time && block.number < registration_time;
+    }
+    function isInDealPhase() public view returns (bool) {
+        return block.number >= registration_time && block.number < deal_time;
+    }
+    function isInComplaintPhase() public view returns (bool) {
+        return block.number >= deal_time && block.number < complaint_time;
+    }
+    function isDone() public view returns (bool) {
+        return block.number >= complaint_time;
+    }
+
+    // list of participant index -> hash of the deals
+    mapping (uint32 => uint256) private deal_hashes;
+    // list participant address -> index in the DKG
+    mapping (address => uint32) private address_index;
+    // list of index of the nodes currently accepted.
+    uint32[] private node_index;
+    // number of users registered, serves to designate the index
+    uint32 nbRegistered = 0;
     // event emitted when the DKG is ready to start
-    event DKGStart();
-
+    event NewParticipant(address from, uint32 index, uint256 tmpKey);
+    event DealBundleSubmitted(uint256 dealer_idx, uint256[3][] encrypted_shares,uint256[] commitment);
+    event ValidComplaint(address from, uint32 evicted);
     
+    constructor()  Ownable() {
+        init_time = block.number; 
+        registration_time = init_time + BLOCKS_PER_PHASE;
+        deal_time = registration_time + BLOCKS_PER_PHASE;
+        complaint_time = deal_time + BLOCKS_PER_PHASE;
+    }
+
+    // Registers a participants and assigns him an index in the group
     // TODO make it payable in a super contract
-    function registerParticipant(uint256 _tmpKey) public {
-        require(status == Status.REGISTRATION, "You can not register yet!");
+    function registerParticipant(uint256 _tmpKey) public  {
+        require(isInRegistrationPhase(), "You can not register yet!");
         require(nbRegistered < MAX_PARTICIPANTS, 
             "too many participants registered");
         // TODO check for BN128 subgroup instead
         require(_tmpKey != 0, "Invalid key");
-        // TODO check for uniqueness of the key
-        require(nodes[msg.sender] == 0, "Already registered participant");
+        // TODO check for uniqueness of the key as well
+        require(address_index[msg.sender] == 0, "Already registered participant");
+        // index will start at 1
         nbRegistered++;
-        nodes[msg.sender] = _tmpKey;
+        uint32 index = nbRegistered;
+        node_index.push(index);
+        address_index[msg.sender] = index;
+        emit NewParticipant(msg.sender, index, _tmpKey);
     }
 
     function numberParticipants() public view returns (uint256) {
         return nbRegistered;
     }
 
-    function startRegistration() public onlyOwner {
-        require(status == Status.CREATED,"Invalid state transition to REGISTRATION");
-        status = Status.REGISTRATION;
-    }
-    // startDKG sets the status such that participants can now submit their deals 
-    // onchain
-    function startDKG() public onlyOwner {
-        require(status == Status.REGISTRATION,"Invalid state transition to DKG_DEALS");
-        // TODO check for a threshold of nodes present
-        status = Status.DKG_PROGRESS;
-        deal_block = block.number;
-    }
-
-    function submitDeal(uint256[2][] memory _encrypted_shares,uint256[] memory _commitment) public isRegistered {
-        require(status == Status.DKG_PROGRESS,"DKG has not started yet");
-        require(block.number > deal_block,"Something is off with the beginning of the DKG");
-        require(block.number < next_phase(deal_block),"Too late to submit deal");
-
+    function submitDealBundle(uint256[3][] memory _encrypted_shares,uint256[] memory _commitment) public isRegistered {
+        require(isInDealPhase(),"DKG is not in the deal phase");
         // 1. Check he submitted enough encrypted shares
         // We expect the dealer to submit his own too.
         // TODO : do we have too ?
@@ -77,11 +85,20 @@ contract DKGManager is Ownable {
         require(_commitment.length == threshold(), "Invalid number of commitments");
         // 3. Compute and store the hash
         bytes32 comm = sha256(abi.encodePacked(_encrypted_shares,_commitment));
-        deal_hashes[msg.sender] = uint256(comm);
+        deal_hashes[indexOfSender()] = uint256(comm);
+        // 4. emit event 
+        emit DealBundleSubmitted(indexOfSender(), _encrypted_shares, _commitment);
     }
 
-    function next_phase(uint start) public pure returns (uint) {
-        return start + uint(BLOCKS_PER_PHASE);
+    function submitComplaintBundle() public {
+        // TODO
+        emit ValidComplaint(msg.sender, 0);
+    }
+
+    // Returns the list of indexes of QUALIFIED participants at the end of the DKG.
+    function participantIndexes() public view returns (uint32[] memory) {
+        require(isDone(),"indexes are of no interest if the DKG is not finished");
+        return node_index;
     }
 
     function threshold() public view returns (uint) {
@@ -89,7 +106,11 @@ contract DKGManager is Ownable {
     }
 
     modifier isRegistered() {
-        require(nodes[msg.sender] != 0, "You are not registered for the DKG");
+        require(address_index[msg.sender] != 0, "You are not registered for the DKG");
         _;
+    }
+
+    function indexOfSender() public view returns (uint32) {
+        return address_index[msg.sender];
     }
 }
