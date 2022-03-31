@@ -43,7 +43,7 @@ contract DKGManager is Ownable {
     uint32 nbRegistered = 0;
     // public key aggregated in "real time", each time a new deal comes in or a
     // new valid complaint comes in
-    Bn128.G1Point dist_key = Bn128.g1Zero();
+    Bn128.G1Point internal dist_key = Bn128.g1Zero();
     // event emitted when the DKG is ready to start
     event NewParticipant(address from, uint32 index, uint256 tmpKey);
     event DealBundleSubmitted(uint256 dealer_idx, uint256[3][] encrypted_shares,uint256[] commitment);
