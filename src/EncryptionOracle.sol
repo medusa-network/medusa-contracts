@@ -30,7 +30,7 @@ contract EncryptionOracle is DKGManager, IEncryptionOracle {
     // pending request is used to track the reencryption requests, to make sure
     // the medusa node callsback the same contract that submitted the request in
     // the first place.
-    mapping(uint256 => PendingRequest) pending_requests;
+    mapping(uint256 => PendingRequest) private pending_requests;
     // counter to derive unique nonces for each ciphertext ever submitted to the oracle
     uint256 private cipher_nonce = 0;
     // counter to derive unique nonces for each reencryption request ever submitted to the oracle
@@ -67,6 +67,9 @@ contract EncryptionOracle is DKGManager, IEncryptionOracle {
     }
 
     // TODO payable etc
+    // the public key is the public key of the recipient. Note the msg.sender
+    // MUST be the one that submitted the ciphertext in the first place
+    // otherwise the oracle will not reply
     function requestReencryption(uint256 _cipher_id, uint256 _publickey) public returns (uint256) {
         uint256 request_id = newRequestId();
         pending_requests[request_id] = PendingRequest(msg.sender, _publickey, _cipher_id);
