@@ -71,6 +71,7 @@ contract EncryptionOracle is DKGManager, IEncryptionOracle {
     // MUST be the one that submitted the ciphertext in the first place
     // otherwise the oracle will not reply
     function requestReencryption(uint256 _cipher_id, uint256 _publickey) public returns (uint256) {
+        // TODO check correct key
         uint256 request_id = newRequestId();
         pending_requests[request_id] = PendingRequest(msg.sender, _publickey, _cipher_id);
         emit ReencryptionRequest(_cipher_id, request_id, _publickey, msg.sender);

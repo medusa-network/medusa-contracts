@@ -8,7 +8,7 @@ import "openzeppelin-contracts/contracts/access/AccessControlEnumerable.sol";
 // A simple role based ACL that broadcast a ciphertext when requested to all
 // current roles. It doesn't support yet broadcasting only to new role members
 // in the future etc.
-contract RoleACL is AccessControlEnumerable {
+contract RoleACL is AccessControlEnumerable, IEncryptionClient {
     bytes32 public constant READER_ROLE = keccak256("READER_ROLE");
     bytes32 public constant WRITER_ROLE = keccak256("WRITER_ROLE");
 
@@ -18,6 +18,9 @@ contract RoleACL is AccessControlEnumerable {
 
     constructor(address _oracleAddress) {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        // we automatically set the admin as a writer as well for more
+        // convenience
+        _setupRole(WRITER_ROLE, msg.sender);
         oracle = IEncryptionOracle(_oracleAddress);
     }
 
@@ -40,23 +43,26 @@ contract RoleACL is AccessControlEnumerable {
         }
         return false;
     }
-    function oracleResult(uint256 id, uint256 r, uint256 cipher, uint256 publickey) external {
-        emit NewOracleResult(id,r,cipher,publickey);
+
+    function oracleResult(uint256 , uint256 _request_id, uint256 _r, uint256 _cipher, uint256 _publickey) external {
+        require(msg.sender == address(oracle), "only oracle can submit results");
+        // TODO : some checks ? do we handle pending requests here etc ?
+        emit NewOracleResult(_request_id,_r,_cipher,_publickey);
     }
 
     // TODO payable
-    function submitCiphertext(bytes32 _role, uint256 _r, uint256 _cipher) public onlyRole(WRITER_ROLE) {
+    function submitCiphertext(bytes32 _role, uint256 _r, uint256 _cipher) public onlyRole(WRITER_ROLE) returns (uint256) {
         uint256[] memory extra = new uint256[](1);
-        extra[1] = uint256(_role);
-        oracle.submitCiphertext(_r,_cipher, extra);
+        extra[0] = uint256(_role);
+        return oracle.submitCiphertext(_r,_cipher, extra);
     }
 
     function askForDecryption(uint256 id) external {
+        uint256 pubkey = addressToKey[msg.sender];
         // check if it is registered correctly
-        require(addressToKey[msg.sender] != 0, "no registered public key");
+        require(pubkey != 0, "no registered public key");
         //  check if it has the right permission
         require(hasRole(READER_ROLE, msg.sender), "Caller is not a reader");
-        uint256 pubkey = addressToKey[msg.sender];
         oracle.requestReencryption(id, pubkey);
     }
 
