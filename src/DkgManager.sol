@@ -2,6 +2,7 @@
 pragma solidity >=0.8.10;
 
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
+import "./Bn128.sol";
 
 contract DKGManager is Ownable {
     // The maximum number of participants
@@ -40,6 +41,9 @@ contract DKGManager is Ownable {
     uint32[] private node_index;
     // number of users registered, serves to designate the index
     uint32 nbRegistered = 0;
+    // public key aggregated in "real time", each time a new deal comes in or a
+    // new valid complaint comes in
+    Bn128.G1Point internal dist_key = Bn128.g1Zero();
     // event emitted when the DKG is ready to start
     event NewParticipant(address from, uint32 index, uint256 tmpKey);
     event DealBundleSubmitted(uint256 dealer_idx, uint256[3][] encrypted_shares,uint256[] commitment);
@@ -83,10 +87,19 @@ contract DKGManager is Ownable {
         // 2. Check he submitted enough committed coefficients
         // TODO Check actual bn128 check on each of them
         require(_commitment.length == threshold(), "Invalid number of commitments");
+        // 3. Check that commitments are all on the bn128 curve by decompressing
+        // them
+        Bn128.G1Point[] memory comms = new Bn128.G1Point[](_commitment.length);
+        for (uint i = 0; i < _commitment.length; i++) {
+            // TODO save them in the contract
+            comms[i] = Bn128.g1Decompress(bytes32(_commitment[i]));
+        }
         // 3. Compute and store the hash
         bytes32 comm = sha256(abi.encodePacked(_encrypted_shares,_commitment));
         deal_hashes[indexOfSender()] = uint256(comm);
-        // 4. emit event 
+        // 4. add the key to the aggregated key 
+        dist_key = Bn128.g1Add(dist_key, comms[0]);
+        // 5. emit event 
         emit DealBundleSubmitted(indexOfSender(), _encrypted_shares, _commitment);
     }
 
@@ -101,6 +114,11 @@ contract DKGManager is Ownable {
         return node_index;
     }
 
+    function distributedKey() public view returns (Bn128.G1Point memory) {
+        require(isDone(),"don't fetch public key before DKG is done");
+        return dist_key;
+    }
+
     function threshold() public view returns (uint) {
         return numberParticipants() / 2 + 1;
     }
@@ -113,4 +131,5 @@ contract DKGManager is Ownable {
     function indexOfSender() public view returns (uint32) {
         return address_index[msg.sender];
     }
+
 }
