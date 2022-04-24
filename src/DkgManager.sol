@@ -115,7 +115,9 @@ contract DKGManager is Ownable {
     }
 
     function distributedKey() public view returns (Bn128.G1Point memory) {
-        require(isDone(),"don't fetch public key before DKG is done");
+        // Currently only demo so more annoying than anything else 
+        // TODO
+        // require(isDone(),"don't fetch public key before DKG is done");
         return dist_key;
     }
 

@@ -12,8 +12,7 @@ contract OracleFactory is Ownable {
     
     function startNewOracle() public onlyOwner returns (address) {
         // For demo useless restriction more annoying than anything
-        // TODO 
-        // require(isOracleNull() || isOracleDone(), "oracle not in good stage");
+        // TODO require(isOracleNull() || isOracleDone(), "oracle not in good stage");
         oracle = new EncryptionOracle();
         emit NewOracleCreated(address(oracle));
         return address(oracle);
