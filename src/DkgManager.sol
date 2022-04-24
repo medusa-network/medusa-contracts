@@ -114,11 +114,11 @@ contract DKGManager is Ownable {
         return node_index;
     }
 
-    function distributedKey() public view returns (Bn128.G1Point memory) {
+    function distributedKey() public view returns (uint256) {
         // Currently only demo so more annoying than anything else 
         // TODO
         // require(isDone(),"don't fetch public key before DKG is done");
-        return dist_key;
+        return uint256(Bn128.g1Compress(dist_key));
     }
 
     function threshold() public view returns (uint) {
