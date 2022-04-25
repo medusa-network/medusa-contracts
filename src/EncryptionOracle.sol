@@ -8,11 +8,16 @@ interface IEncryptionClient {
     function oracleResult(uint256 cipher_id, uint256 request_id, uint256 r, uint256 cipher, uint256 publickey) external ;
 }
 
-interface IEncryptionOracle {
+interface IEncryptionOracle is IThresholdNetwork {
     // returns the request id
     function requestReencryption(uint256 _cipher_id, uint256 _publickey) external returns (uint256); 
     // returns the ciphertext id
     function submitCiphertext(uint256 _r, uint256 _cipher, uint256[] memory _extra) external returns (uint256);
+    event NewCiphertext(uint256 indexed id, uint256 r, uint256 cipher, address client, uint256[] extra);
+    event ReencryptionRequest(uint256 indexed cipher_id, uint256 request_id, uint256 publickey, address client);
+
+
+
 }
 
 contract EncryptionOracle is DKGManager, IEncryptionOracle {
@@ -40,7 +45,7 @@ contract EncryptionOracle is DKGManager, IEncryptionOracle {
     // publickey: recipient for which we wish to reencrypt for
     // client: inserted such that medusa nodes check the client that originated
     // the newciphertext event, is the same that request the reencryptionrequest
-    event ReencryptionRequest(uint256 indexed cipher_id, uint256 request_id, uint256 publickey, address client);
+    // event ReencryptionRequest(uint256 indexed cipher_id, uint256 request_id, uint256 publickey, address client);
     
     // id: newly created id for this ciphertext
     // r,cipher: random part of the ciphertext and then the "hashed"/encryption part of it
@@ -48,7 +53,7 @@ contract EncryptionOracle is DKGManager, IEncryptionOracle {
     // extra: any extra data to submit for this ciphertext. Medusa nodes will
     // give these extra data when they check locally that the
     // client.isAuthorized(.... extra) returns true.
-    event NewCiphertext(uint256 indexed id, uint256 r, uint256 cipher, address client, uint256[] extra);
+    //event NewCiphertext(uint256 indexed id, uint256 r, uint256 cipher, address client, uint256[] extra);
 
     function newCipherId() private returns (uint256) {
         cipher_nonce += 1;

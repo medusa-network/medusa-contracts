@@ -4,7 +4,11 @@ pragma solidity >=0.8.10;
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "./Bn128.sol";
 
-contract DKGManager is Ownable {
+interface IThresholdNetwork {
+    function distributedKey() external view returns (uint256);
+}
+
+contract DKGManager is Ownable, IThresholdNetwork {
     // The maximum number of participants
     uint16 constant public MAX_PARTICIPANTS = 1000;
     // how many rounds/blocks compose one DKG phase
@@ -114,7 +118,7 @@ contract DKGManager is Ownable {
         return node_index;
     }
 
-    function distributedKey() public view returns (uint256) {
+    function distributedKey() public override view returns (uint256) {
         // Currently only demo so more annoying than anything else 
         // TODO
         // require(isDone(),"don't fetch public key before DKG is done");
