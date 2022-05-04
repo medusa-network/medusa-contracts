@@ -50,6 +50,7 @@ contract DKGManager is Ownable, IThresholdNetwork {
     Bn128.G1Point internal dist_key = Bn128.g1Zero();
     // event emitted when the DKG is ready to start
     event NewParticipant(address from, uint32 index, uint256 tmpKey);
+    // TODO change when this is fixed https://github.com/gakonst/ethers-rs/issues/1220
     event DealBundleSubmitted(uint256 dealer_idx, DealBundle bundle);
     event ValidComplaint(address from, uint32 evicted);
     
@@ -83,14 +84,10 @@ contract DKGManager is Ownable, IThresholdNetwork {
     }
 
     struct DealBundle  {
-        EncryptedShare[] shares;
-        Bn128.G1Point[] commitment;
-    }
-
-    struct EncryptedShare {
-        uint32 index;
         Bn128.G1Point random;
-        uint256 cipher;
+        uint32[] indices;
+        uint256[] encrypted_shares;
+        Bn128.G1Point[] commitment;
     }
 
     // TODO 
@@ -108,7 +105,7 @@ contract DKGManager is Ownable, IThresholdNetwork {
         // 1. Check he submitted enough encrypted shares
         // We expect the dealer to submit his own too.
         // TODO : do we have too ?
-        require(_bundle.shares.length == numberParticipants(), "Different number of encrypted shares");
+        require(_bundle.encrypted_shares.length == numberParticipants(), "Different number of encrypted shares");
         // 2. Check he submitted enough committed coefficients
         // TODO Check actual bn128 check on each of them
         uint len = threshold();
