@@ -5,7 +5,7 @@ import "./DkgManager.sol";
 
 interface IEncryptionClient {
     function isAuthorized(uint256 cipher_id, uint256 publickey, uint256[] memory extra) external returns (bool);
-    function oracleResult(uint256 cipher_id, uint256 request_id, uint256 r, uint256 cipher, uint256 publickey) external ;
+    function oracleResult(uint256 cipher_id, uint256 request_id, uint256 r, uint256 cipher, uint256 publickey) external;
 }
 
 interface IEncryptionOracle is IThresholdNetwork {
