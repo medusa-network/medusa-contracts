@@ -51,7 +51,9 @@ contract DKGManager is Ownable, IThresholdNetwork {
     // event emitted when the DKG is ready to start
     event NewParticipant(address from, uint32 index, uint256 tmpKey);
     // TODO change when this is fixed https://github.com/gakonst/ethers-rs/issues/1220
-    event DealBundleSubmitted(uint256 dealer_idx, DealBundle bundle);
+    event DealBundleSubmitted(uint256 dealer_idx, Bn128.G1Point random,uint32[]
+                             indices, uint256[] shares, Bn128.G1Point[]
+                             commitment);
     event ValidComplaint(address from, uint32 evicted);
     
     constructor()  Ownable() {
@@ -90,6 +92,12 @@ contract DKGManager is Ownable, IThresholdNetwork {
         Bn128.G1Point[] commitment;
     }
 
+    function emitDealBundle(uint32 _index, DealBundle memory _bundle) private {
+        emit DealBundleSubmitted(_index, _bundle.random,
+                                 _bundle.indices,_bundle.encrypted_shares,
+                                 _bundle.commitment);
+    }
+
     // TODO 
     //function dealHash(DealBundle memory _bundle) pure returns (uint256) {
         //uint comm_len = 2 * 32 * _bundle.commitment.length;
@@ -100,8 +108,9 @@ contract DKGManager is Ownable, IThresholdNetwork {
     //}
 
     function submitDealBundle(DealBundle memory _bundle) public isRegistered {
+        uint32 index = indexOfSender();
         require(isInDealPhase(),"DKG is not in the deal phase");
-        require(indexOfSender() != 0, "Not registered sender");
+        require(index != 0, "Not registered sender");
         // 1. Check he submitted enough encrypted shares
         // We expect the dealer to submit his own too.
         // TODO : do we have too ?
@@ -127,7 +136,8 @@ contract DKGManager is Ownable, IThresholdNetwork {
         // 4. add the key to the aggregated key 
         dist_key = Bn128.g1Add(dist_key, _bundle.commitment[0]);
         // 5. emit event 
-        emit DealBundleSubmitted(indexOfSender(), _bundle);
+        //emit DealBundleSubmitted(index, _bundle);
+        emitDealBundle(index,_bundle);
     }
 
     function submitComplaintBundle() public {
