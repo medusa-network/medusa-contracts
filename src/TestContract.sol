@@ -20,10 +20,9 @@ contract TestContract is EncryptionOracle {
 
     // used to quickly setup a dist key without going through the whole DKG
     // onchain
-    function setDistributedKey(uint256 _point) public onlyOwner {
+    function setDistributedKey(Bn128.G1Point memory _point) public onlyOwner {
         require(nonce == 0,"distributed key already setup!");
-        Bn128.G1Point memory key = Bn128.g1Decompress(bytes32(_point));
-        dist_key = key;
+        dist_key = _point;
         nonce = block.number;
     }
 
