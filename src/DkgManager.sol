@@ -4,7 +4,11 @@ pragma solidity >=0.8.10;
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "./Bn128.sol";
 
-contract DKGManager is Ownable {
+interface IThresholdNetwork {
+    function distributedKey() external view returns (Bn128.G1Point memory);
+}
+
+contract DKGManager is Ownable, IThresholdNetwork {
     // The maximum number of participants
     uint16 constant public MAX_PARTICIPANTS = 1000;
     // how many rounds/blocks compose one DKG phase
@@ -46,7 +50,10 @@ contract DKGManager is Ownable {
     Bn128.G1Point internal dist_key = Bn128.g1Zero();
     // event emitted when the DKG is ready to start
     event NewParticipant(address from, uint32 index, uint256 tmpKey);
-    event DealBundleSubmitted(uint256 dealer_idx, uint256[3][] encrypted_shares,uint256[] commitment);
+    // TODO change when this is fixed https://github.com/gakonst/ethers-rs/issues/1220
+    event DealBundleSubmitted(uint256 dealer_idx, Bn128.G1Point random,uint32[]
+                             indices, uint256[] shares, Bn128.G1Point[]
+                             commitment);
     event ValidComplaint(address from, uint32 evicted);
     
     constructor()  Ownable() {
@@ -78,29 +85,59 @@ contract DKGManager is Ownable {
         return nbRegistered;
     }
 
-    function submitDealBundle(uint256[3][] memory _encrypted_shares,uint256[] memory _commitment) public isRegistered {
+    struct DealBundle  {
+        Bn128.G1Point random;
+        uint32[] indices;
+        uint256[] encrypted_shares;
+        Bn128.G1Point[] commitment;
+    }
+
+    function emitDealBundle(uint32 _index, DealBundle memory _bundle) private {
+        emit DealBundleSubmitted(_index, _bundle.random,
+                                 _bundle.indices,_bundle.encrypted_shares,
+                                 _bundle.commitment);
+    }
+
+    // TODO 
+    //function dealHash(DealBundle memory _bundle) pure returns (uint256) {
+        //uint comm_len = 2 * 32 * _bundle.commitment.length;
+        //share_len = _bundle.shares.length * (2 + 32*2 + 32);
+        //uint32 len32 = (comm_len + share_len) / 4;
+        //uint32[] memory hash = new uint32[](len32);
+        //for 
+    //}
+
+    function submitDealBundle(DealBundle memory _bundle) public isRegistered {
+        uint32 index = indexOfSender();
         require(isInDealPhase(),"DKG is not in the deal phase");
+        require(index != 0, "Not registered sender");
         // 1. Check he submitted enough encrypted shares
         // We expect the dealer to submit his own too.
         // TODO : do we have too ?
-        require(_encrypted_shares.length == numberParticipants(), "Different number of encrypted shares");
+        require(_bundle.encrypted_shares.length == numberParticipants(), "Different number of encrypted shares");
         // 2. Check he submitted enough committed coefficients
         // TODO Check actual bn128 check on each of them
-        require(_commitment.length == threshold(), "Invalid number of commitments");
+        uint len = threshold();
+        require(_bundle.commitment.length == len, "Invalid number of commitments");
         // 3. Check that commitments are all on the bn128 curve by decompressing
         // them
-        Bn128.G1Point[] memory comms = new Bn128.G1Point[](_commitment.length);
-        for (uint i = 0; i < _commitment.length; i++) {
-            // TODO save them in the contract
-            comms[i] = Bn128.g1Decompress(bytes32(_commitment[i]));
+        // TODO hash 
+        //uint256[] memory compressed = new uint256[](len);
+        for (uint i = 0; i < len; i++) {
+            // TODO save the addition of those if successful later
+            //comms[i] = Bn128.g1Decompress(bytes32(_commitment[i]));
+            require(Bn128.isG1PointOnCurve(_bundle.commitment[i]),"point not on curve");
+            //compressed[i] = uint256(Bn128.g1Compress(_commitment[i]));
         }
         // 3. Compute and store the hash
-        bytes32 comm = sha256(abi.encodePacked(_encrypted_shares,_commitment));
-        deal_hashes[indexOfSender()] = uint256(comm);
+        //bytes32 comm = keccak256(abi.encodePacked(_encrypted_shares,compressed));
+        // TODO check it is not done before
+        //deal_hashes[indexOfSender()] = uint256(comm);
         // 4. add the key to the aggregated key 
-        dist_key = Bn128.g1Add(dist_key, comms[0]);
+        dist_key = Bn128.g1Add(dist_key, _bundle.commitment[0]);
         // 5. emit event 
-        emit DealBundleSubmitted(indexOfSender(), _encrypted_shares, _commitment);
+        //emit DealBundleSubmitted(index, _bundle);
+        emitDealBundle(index,_bundle);
     }
 
     function submitComplaintBundle() public {
@@ -114,8 +151,11 @@ contract DKGManager is Ownable {
         return node_index;
     }
 
-    function distributedKey() public view returns (Bn128.G1Point memory) {
-        require(isDone(),"don't fetch public key before DKG is done");
+    function distributedKey() public override view returns (Bn128.G1Point memory) {
+        // Currently only demo so more annoying than anything else 
+        // TODO
+        // require(isDone(),"don't fetch public key before DKG is done");
+        //return uint256(Bn128.g1Compress(dist_key));
         return dist_key;
     }
 

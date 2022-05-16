@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.10;
 
-import "../EncryptionOracle.sol";
+import { IEncryptionOracle as IO, EncryptionOracle } from "../EncryptionOracle.sol";
 import "../RoleACL.sol";
+import "../Bn128.sol";
 import "ds-test/test.sol";
 
 interface CheatCodes {
@@ -12,7 +13,7 @@ interface CheatCodes {
 }
 
 contract ContractTest is DSTest {
-    EncryptionOracle oracle; 
+    IO oracle; 
     CheatCodes testing = CheatCodes(HEVM_ADDRESS);
 
     function setUp() public {
@@ -21,10 +22,11 @@ contract ContractTest is DSTest {
 
     function testSubmitCiphertext() public {
         RoleACL acl = new RoleACL(address(oracle));
-        uint256 id = acl.submitCiphertext(acl.READER_ROLE(), 1,2);
+        Bn128.G1Point memory key = Bn128.G1Point(1,2);
+        IO.Ciphertext memory c = IO.Ciphertext(key,3);
+        uint256 id = acl.submitCiphertext(c);
         address bob = address(0x02);
-        uint256 bobkey = 3;
-        acl.grantRoleKey(acl.READER_ROLE(),bob,bobkey);
+        acl.grantRoleKey(acl.READER_ROLE(),bob,key);
         testing.prank(bob);
         acl.askForDecryption(id);
      

@@ -88,9 +88,15 @@ library Bn128  {
     function g1Compress(G1Point memory point) internal pure returns (bytes32) {
         bytes32 m = bytes32(point.x);
 
+        // first byte with the first bit set as parity -> 1 = even, 0 = odd
+        // even <-- 1xxxxxxx
         bytes1 leadM = m[0] | (parity(point.y) << 7);
         // slither-disable-next-line incorrect-shift
+        // 0xff000....00
         uint256 mask = 0xff << (31 * 8);
+        // m & 00ffffffff -> that keeps the lowest parts of m  and then add the
+        // lead bit
+        // even <-- 1xxxxxxx  m[1..j]
         m = (m & ~bytes32(mask)) | (leadM >> 0);
 
         return m;
@@ -108,7 +114,7 @@ library Bn128  {
 
     /// @dev Calculates whether the provided number is even or odd.
     /// @return 0x01 if y is an even number and 0x00 if it's odd.
-    function parity(uint256 value) private pure returns (bytes1) {
+    function parity(uint256 value) public pure returns (bytes1) {
         return bytes32(value)[31] & 0x01;
     }
 }
