@@ -18,6 +18,20 @@ contract TestContract is EncryptionOracle {
         /*acc2.y = 0;*/
     }
 
+    function compressPoint(Bn128.G1Point memory _point) public pure returns
+    (uint256) {
+        return uint256(Bn128.g1Compress(_point));
+    }
+
+    function parityPoint(Bn128.G1Point memory _point) public pure returns (uint8) {
+        return uint8(bytes32(_point.y)[31] & 0x01);
+    }
+
+    function decompressPoint(uint256 _point) public view returns 
+        (Bn128.G1Point memory) {
+        return Bn128.g1Decompress(bytes32(_point));
+    }
+
     // used to quickly setup a dist key without going through the whole DKG
     // onchain
     function setDistributedKey(Bn128.G1Point memory _point) public onlyOwner {
