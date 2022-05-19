@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.10;
 
-import "./EncryptionOracle.sol";
+import {EncryptionOracle, IEncryptionOracle as IO} from "./EncryptionOracle.sol";
 import "./Bn128.sol";
 /*import "./altbn128.sol";*/
 
@@ -56,5 +56,10 @@ contract TestContract is EncryptionOracle {
 
     function getAccumulatorCompressed() public view returns (uint256) {
         return uint256(Bn128.g1Compress(getAccumulator()));
+    }
+
+    event NewLogCipher(uint256 indexed id, uint256 rx, uint256 ry, uint256 cipher);
+    function logCipher(uint256 id,IO.Ciphertext memory _cipher) public {
+        emit NewLogCipher(id, _cipher.random.x, _cipher.random.y, _cipher.cipher);
     }
 }
