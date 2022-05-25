@@ -66,13 +66,13 @@ contract DKGManager is Ownable, IThresholdNetwork {
     // Registers a participants and assigns him an index in the group
     // TODO make it payable in a super contract
     function registerParticipant(uint256 _tmpKey) public  {
-        require(isInRegistrationPhase(), "You can not register yet!");
-        require(nbRegistered < MAX_PARTICIPANTS, 
-            "too many participants registered");
+        //require(isInRegistrationPhase(), "You can not register yet!");
+        //require(nbRegistered < MAX_PARTICIPANTS, 
+            //"too many participants registered");
         // TODO check for BN128 subgroup instead
-        require(_tmpKey != 0, "Invalid key");
+        //require(_tmpKey != 0, "Invalid key");
         // TODO check for uniqueness of the key as well
-        require(address_index[msg.sender] == 0, "Already registered participant");
+        //require(address_index[msg.sender] == 0, "Already registered participant");
         // index will start at 1
         nbRegistered++;
         uint32 index = nbRegistered;
