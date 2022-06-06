@@ -36,6 +36,7 @@ contract TestContract is EncryptionOracle {
     // onchain
     function setDistributedKey(Bn128.G1Point memory _point) public onlyOwner {
         require(nonce == 0,"distributed key already setup!");
+        require(Bn128.isG1PointOnCurve(_point) == true, "point not on curve");
         dist_key = _point;
         nonce = block.number;
     }
