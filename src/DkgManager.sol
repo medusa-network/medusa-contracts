@@ -25,7 +25,7 @@ contract DKGManager is Ownable, IThresholdNetwork {
     uint256 public complaint_time;
 
     function isInRegistrationPhase() public view returns (bool) {
-        return block.number > init_time && block.number < registration_time;
+        return block.number >= init_time && block.number < registration_time;
     }
     function isInDealPhase() public view returns (bool) {
         return block.number >= registration_time && block.number < deal_time;
