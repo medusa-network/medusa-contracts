@@ -67,8 +67,7 @@ contract DKGManager is Ownable, IThresholdNetwork {
     // TODO make it payable in a super contract
     function registerParticipant(uint256 _tmpKey) public  {
         require(isInRegistrationPhase(), "You can not register yet!");
-        //require(nbRegistered < MAX_PARTICIPANTS, 
-            //"too many participants registered");
+        require(nbRegistered < MAX_PARTICIPANTS, "too many participants registered");
         // TODO check for BN128 subgroup instead
         //require(_tmpKey != 0, "Invalid key");
         // TODO check for uniqueness of the key as well
