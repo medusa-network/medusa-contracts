@@ -79,7 +79,7 @@ contract EncryptionOracle is DKGManager, IEncryptionOracle {
     // TODO cipher is not strictly required given that's the part that _doesn't_
     // change, although we probably dont want to store it onchain? but then we
     // can't guarantee it's for the same, we have to "trust" the oracle  -- 
-    // Check with zkproofs if they are sufficient to guarantee this
+    // probably zkproofs are sufficient to guarantee this once implemented
     function deliverReencryption(uint256 _request_id, IEncryptionOracle.Ciphertext memory _cipher) public {
         // TODO check that sender is authorized
         require(requestDoExists(_request_id));

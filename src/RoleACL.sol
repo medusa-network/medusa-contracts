@@ -84,5 +84,13 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
         super.revokeRole(_role, _account); 
         delete(addressToKey[_account]);
     }
+
+    function getKeyForAddress(address _account) public view returns (Bn128.G1Point memory) {
+        return addressToKey[_account];
+    }
+
+    function getOracleAddress() public view returns (address) {
+        return address(oracle);
+    }
 }
 
