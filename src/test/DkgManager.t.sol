@@ -23,9 +23,6 @@ contract DKGTest is DSTest {
     }
 
     function testStatus() public {
-        testing.expectRevert(bytes("You can not register yet!"));
-        manager.registerParticipant(1);
-        // we only accept registering after one block
         testing.roll(block.number + 1);
         manager.registerParticipant(1);
     }
