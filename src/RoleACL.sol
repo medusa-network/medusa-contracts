@@ -18,7 +18,6 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
     IO private oracle;
     mapping(address => Bn128.G1Point) private addressToKey;
 
-
     constructor(address _oracleAddress) {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         // we automatically set the admin as a writer as well for more
@@ -29,26 +28,10 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
 
     // TODO Fix with a proper struct once 
     // https://github.com/gakonst/ethers-rs/issues/1219 is fixed
-    // request id of the reeencryption
-    event NewOracleResult(uint256 _id, uint256 rx, uint256 ry, uint256 cipher);
-
-    //function isAuthorized(uint256, uint256 _publickey, uint256[] memory) external view returns (bool) {
-        ////require(extra.length == 1);
-        ////bytes32 role = bytes32(extra[0]);
-        //// TODO can actually take role from extra but need to be careful with
-        //// assumptions
-        //// Iterate over all members of the role, get their associated public key
-        //// and check if it is the same. if it is, our public key is in the
-        //// reader set. Given this function can be ran locally it matters little 
-        //uint256 count = getRoleMemberCount(READER_ROLE);
-        //for (uint256 i = 0; i < count; i ++) {
-            //address addr = getRoleMember(READER_ROLE,i);
-            //if (addressToKey[addr] == _publickey) { 
-                //return true;
-            //}
-        //}
-        //return false;
-    //}
+    // request id 
+    // TODO fix by giving the ciphertext ID AND the request ID
+    // we can't differentiate otherwise
+    event NewOracleResult(uint256 request_id, uint256 rx, uint256 ry, uint256 cipher);
 
     function oracleResult(uint256 _request_id, IO.Ciphertext memory _cipher) external {
         require(msg.sender == address(oracle), "only oracle can submit results");
