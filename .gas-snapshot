@@ -1,0 +1,6 @@
+DKGTest:testExample() (gas: 212)
+DKGTest:testRegister() (gas: 31808295)
+DKGTest:testStatus() (gas: 105774)
+OracleFactoryTest:testFactoryStart() (gas: 2504526)
+ContractTest:testSubmitCiphertext() (gas: 1364897)
+ContractTest:testExample() (gas: 190)
