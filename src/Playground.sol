@@ -5,7 +5,7 @@ import {EncryptionOracle, IEncryptionOracle as IO} from "./EncryptionOracle.sol"
 import "./Bn128.sol";
 /*import "./altbn128.sol";*/
 
-contract TestContract is EncryptionOracle {
+contract Playground is EncryptionOracle {
     uint256 private nonce;
 
     Bn128.G1Point private accumulator;
