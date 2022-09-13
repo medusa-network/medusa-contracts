@@ -14,17 +14,19 @@ interface IEncryptionOracle is IThresholdNetwork {
     }
 
     // returns the request id
-    function requestReencryption(uint256 _cipher_id, Bn128.G1Point memory _publickey) external returns (uint256); 
+    function requestReencryption(uint256 _cipher_id, Bn128.G1Point memory _publickey) external returns (uint256);
     // returns the ciphertext id
     function submitCiphertext(Ciphertext memory _cipher) external returns (uint256);
-    // TODO Fix with a proper struct once 
+    // TODO Fix with a proper struct once
     // https://github.com/gakonst/ethers-rs/issues/1219 is fixed
+
     event NewCiphertext(uint256 indexed id, uint256 rx, uint256 ry, uint256 cipher, address client);
-    event ReencryptionRequest(uint256 indexed cipher_id, uint256 request_id, uint256 pubx, uint256 puby, address client);
+    event ReencryptionRequest(
+        uint256 indexed cipher_id, uint256 request_id, uint256 pubx, uint256 puby, address client
+    );
 }
 
 contract EncryptionOracle is DKGManager, IEncryptionOracle {
-
     // TODO authorization
     // who are the oracles sender that are allowed to push results
     //mapping(address => bool) authorized_oracle;
@@ -52,10 +54,10 @@ contract EncryptionOracle is DKGManager, IEncryptionOracle {
         request_nonce += 1;
         return request_nonce;
     }
-    
-    function submitCiphertext(IEncryptionOracle.Ciphertext memory _cipher) external returns (uint256) { 
+
+    function submitCiphertext(IEncryptionOracle.Ciphertext memory _cipher) external returns (uint256) {
         uint256 id = newCipherId();
-        emit NewCiphertext(id, _cipher.random.x,_cipher.random.y,_cipher.cipher, msg.sender);
+        emit NewCiphertext(id, _cipher.random.x, _cipher.random.y, _cipher.cipher, msg.sender);
         return id;
     }
 
@@ -78,7 +80,7 @@ contract EncryptionOracle is DKGManager, IEncryptionOracle {
 
     // TODO cipher is not strictly required given that's the part that _doesn't_
     // change, although we probably dont want to store it onchain? but then we
-    // can't guarantee it's for the same, we have to "trust" the oracle  -- 
+    // can't guarantee it's for the same, we have to "trust" the oracle  --
     // probably zkproofs are sufficient to guarantee this once implemented
     function deliverReencryption(uint256 _request_id, IEncryptionOracle.Ciphertext memory _cipher) public {
         // TODO check that sender is authorized
