@@ -1,4 +1,4 @@
-name: Tests
+name: Format, Lint, Gas snapshot
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  tests:
+  format-lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -23,8 +23,14 @@ jobs:
       - name: Build and print contract sizes
         run: forge build --sizes
 
-      - name: Run tests
-        run: forge test
-        env:
-          # Only fuzz intensely if we're running this action on a push to main or for a PR going into main:
-          FOUNDRY_PROFILE: ${{ (github.ref == 'refs/heads/main' || github.base_ref == 'main') && 'intense' }}
+      - name: Check formatting
+        run: forge fmt --check
+
+      - name: Run Slither
+        uses: crytic/slither-action@v0.1.1
+        with:
+          ignore-compile: true
+
+      - name: Check gas snapshots
+        run: forge snapshot --check
+
