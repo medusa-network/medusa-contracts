@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.10;
 
-import "../DkgManager.sol";
+import "../src/DkgManager.sol";
 import "ds-test/test.sol";
 
 interface CheatCodes {

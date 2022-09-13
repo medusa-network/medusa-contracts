@@ -2,10 +2,9 @@
 pragma solidity >=0.8.10;
 
 import "ds-test/test.sol";
-import "./../OracleFactory.sol";
+import "../src/OracleFactory.sol";
 
 contract OracleFactoryTest is DSTest {
-
     OracleFactory oracle;
 
     function setUp() public {
