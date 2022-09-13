@@ -5,11 +5,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./EncryptionOracle.sol";
 
 contract OracleFactory is Ownable {
-
-    EncryptionOracle oracle; 
+    EncryptionOracle oracle;
 
     event NewOracleCreated(address _oracle);
-    
+
     function startNewOracle() public onlyOwner returns (address) {
         // For demo useless restriction more annoying than anything
         // TODO require(isOracleNull() || isOracleDone(), "oracle not in good stage");
@@ -21,8 +20,8 @@ contract OracleFactory is Ownable {
     function isOracleNull() internal view returns (bool) {
         return address(oracle) == address(0);
     }
+
     function isOracleDone() internal view returns (bool) {
         return oracle.isDone();
     }
 }
-

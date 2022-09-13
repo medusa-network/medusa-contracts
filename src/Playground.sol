@@ -6,7 +6,7 @@ import "./Bn128.sol";
 /*import "./altbn128.sol";*/
 
 contract TestContract is EncryptionOracle {
-    uint private nonce;
+    uint256 private nonce;
 
     Bn128.G1Point private accumulator;
     /*altbn128.G1Point private acc2;*/
@@ -18,8 +18,7 @@ contract TestContract is EncryptionOracle {
         /*acc2.y = 0;*/
     }
 
-    function compressPoint(Bn128.G1Point memory _point) public pure returns
-    (uint256) {
+    function compressPoint(Bn128.G1Point memory _point) public pure returns (uint256) {
         return uint256(Bn128.g1Compress(_point));
     }
 
@@ -27,15 +26,14 @@ contract TestContract is EncryptionOracle {
         return uint8(bytes32(_point.y)[31] & 0x01);
     }
 
-    function decompressPoint(uint256 _point) public view returns 
-        (Bn128.G1Point memory) {
+    function decompressPoint(uint256 _point) public view returns (Bn128.G1Point memory) {
         return Bn128.g1Decompress(bytes32(_point));
     }
 
     // used to quickly setup a dist key without going through the whole DKG
     // onchain
     function setDistributedKey(Bn128.G1Point memory _point) public onlyOwner {
-        require(nonce == 0,"distributed key already setup!");
+        require(nonce == 0, "distributed key already setup!");
         require(Bn128.isG1PointOnCurve(_point) == true, "point not on curve");
         dist_key = _point;
         nonce = block.number;
@@ -48,7 +46,7 @@ contract TestContract is EncryptionOracle {
 
     function addAccumulator(Bn128.G1Point memory point) public {
         /*Bn128.G1Point memory point = G1Point(_x,_y);*/
-        accumulator = Bn128.g1Add(accumulator,point);
+        accumulator = Bn128.g1Add(accumulator, point);
     }
 
     function getAccumulator() public view returns (Bn128.G1Point memory) {
@@ -60,7 +58,8 @@ contract TestContract is EncryptionOracle {
     }
 
     event NewLogCipher(uint256 indexed id, uint256 rx, uint256 ry, uint256 cipher);
-    function logCipher(uint256 id,IO.Ciphertext memory _cipher) public {
+
+    function logCipher(uint256 id, IO.Ciphertext memory _cipher) public {
         emit NewLogCipher(id, _cipher.random.x, _cipher.random.y, _cipher.cipher);
     }
 }
