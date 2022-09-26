@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 // parts extracted/inspired from https://github.com/keep-network/keep-core/edit/main/solidity/random-beacon/contracts/libraries/AltBn128.sol
-pragma solidity >=0.8.10;
+pragma solidity ^0.8.17;
 
 /// @title Operations on bn128
 /// @dev Implementations of common elliptic curve operations on Ethereum's

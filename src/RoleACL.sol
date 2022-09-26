@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.8.10;
+pragma solidity ^0.8.17;
 
 import {IEncryptionOracle as IO, IEncryptionClient} from "./EncryptionOracle.sol";
 import "./Bn128.sol";
@@ -49,7 +49,12 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
         oracle.requestReencryption(_id, pubkey);
     }
 
-    function grantRole(bytes32 _role, address) public view override onlyRole(getRoleAdmin(_role)) {
+    function grantRole(bytes32 _role, address)
+        public
+        view
+        override (AccessControl, IAccessControl)
+        onlyRole(getRoleAdmin(_role))
+    {
         // TODO check if there are other public functions to restrict
         require(false, "This can not be called - call grantRoleKey");
     }
@@ -64,7 +69,12 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
         addressToKey[_account] = _pubkey;
     }
 
-    function revokeRole(bytes32 _role, address _account) public virtual override onlyRole(getRoleAdmin(_role)) {
+    function revokeRole(bytes32 _role, address _account)
+        public
+        virtual
+        override (AccessControl, IAccessControl)
+        onlyRole(getRoleAdmin(_role))
+    {
         super.revokeRole(_role, _account);
         delete(addressToKey[_account]);
     }

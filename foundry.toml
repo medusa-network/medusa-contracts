@@ -6,5 +6,5 @@ remappings = ["ds-test/=lib/ds-test/src/","@openzeppelin/contracts=lib/openzeppe
 # See more config options https://github.com/gakonst/foundry/tree/master/configr
 optimizer = true
 optimizer_runs = 200
-solc-version = "0.8.10"
+solc-version = "0.8.17"
 verbosity = 4

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.8.10;
+pragma solidity ^0.8.17;
 
 import {IEncryptionOracle as IO, EncryptionOracle} from "../src/EncryptionOracle.sol";
 import "../src/RoleACL.sol";
