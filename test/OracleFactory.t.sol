@@ -2,7 +2,8 @@
 pragma solidity ^0.8.17;
 
 import "ds-test/test.sol";
-import "../src/OracleFactory.sol";
+import {OracleFactory} from "../src/OracleFactory.sol";
+import {Bn128} from "../src/Bn128.sol";
 
 contract OracleFactoryTest is DSTest {
     OracleFactory oracle;
@@ -12,7 +13,7 @@ contract OracleFactoryTest is DSTest {
     }
 
     function testFactoryStart() public {
-        address a1 = oracle.startNewOracle();
-        address a2 = oracle.startNewOracle();
+        oracle.startNewOracle(Bn128.g1Zero());
+        oracle.startNewOracle(Bn128.g1Zero());
     }
 }

@@ -2,8 +2,8 @@
 pragma solidity ^0.8.17;
 
 import {IEncryptionOracle as IO, EncryptionOracle} from "../src/EncryptionOracle.sol";
-import "../src/RoleACL.sol";
-import "../src/Bn128.sol";
+import {RoleACL} from "../src/RoleACL.sol";
+import {Bn128} from "../src/Bn128.sol";
 import "ds-test/test.sol";
 
 interface CheatCodes {
@@ -17,7 +17,7 @@ contract RoleACLTest is DSTest {
     CheatCodes testing = CheatCodes(HEVM_ADDRESS);
 
     function setUp() public {
-        oracle = new EncryptionOracle();
+        oracle = new EncryptionOracle(Bn128.g1Zero());
     }
 
     function testSubmitCiphertext() public {

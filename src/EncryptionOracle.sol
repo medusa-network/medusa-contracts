@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "./DkgManager.sol";
+import {IThresholdNetwork} from "./DkgManager.sol";
+import {Bn128} from "./Bn128.sol";
 
 interface IEncryptionClient {
     function oracleResult(uint256 request_id, IEncryptionOracle.Ciphertext memory _cipher) external;
@@ -26,11 +27,14 @@ interface IEncryptionOracle is IThresholdNetwork {
     );
 }
 
-contract EncryptionOracle is DKGManager, IEncryptionOracle {
+contract EncryptionOracle is IEncryptionOracle {
     // TODO authorization
     // who are the oracles sender that are allowed to push results
     //mapping(address => bool) authorized_oracle;
     address public authorized_client;
+
+    // public key set by OracleFactory on deployment
+    Bn128.G1Point internal distKey;
 
     struct PendingRequest {
         address client;
@@ -44,6 +48,10 @@ contract EncryptionOracle is DKGManager, IEncryptionOracle {
     uint256 private cipher_nonce = 0;
     // counter to derive unique nonces for each reencryption request ever submitted to the oracle
     uint256 private request_nonce = 0;
+
+    constructor(Bn128.G1Point memory _distKey) {
+        distKey = _distKey;
+    }
 
     function newCipherId() private returns (uint256) {
         cipher_nonce += 1;
@@ -89,5 +97,9 @@ contract EncryptionOracle is DKGManager, IEncryptionOracle {
         delete(pending_requests[_request_id]);
         IEncryptionClient client = IEncryptionClient(pr.client);
         client.oracleResult(_request_id, _cipher);
+    }
+
+    function distributedKey() external view returns (Bn128.G1Point memory) {
+        return distKey;
     }
 }

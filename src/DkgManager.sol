@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "./Bn128.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Bn128} from "./Bn128.sol";
 
 interface IThresholdNetwork {
     function distributedKey() external view returns (Bn128.G1Point memory);
@@ -51,7 +51,7 @@ contract DKGManager is Ownable, IThresholdNetwork {
     uint32 nbRegistered = 0;
     // public key aggregated in "real time", each time a new deal comes in or a
     // new valid complaint comes in
-    Bn128.G1Point internal dist_key = Bn128.g1Zero();
+    Bn128.G1Point internal distKey = Bn128.g1Zero();
     // event emitted when the DKG is ready to start
 
     event NewParticipant(address from, uint32 index, uint256 tmpKey);
@@ -136,7 +136,7 @@ contract DKGManager is Ownable, IThresholdNetwork {
         // TODO check it is not done before
         //deal_hashes[indexOfSender()] = uint256(comm);
         // 4. add the key to the aggregated key
-        dist_key = Bn128.g1Add(dist_key, _bundle.commitment[0]);
+        distKey = Bn128.g1Add(distKey, _bundle.commitment[0]);
         // 5. emit event
         //emit DealBundleSubmitted(index, _bundle);
         emitDealBundle(index, _bundle);
@@ -157,8 +157,8 @@ contract DKGManager is Ownable, IThresholdNetwork {
         // Currently only demo so more annoying than anything else
         // TODO
         // require(isDone(),"don't fetch public key before DKG is done");
-        //return uint256(Bn128.g1Compress(dist_key));
-        return dist_key;
+        //return uint256(Bn128.g1Compress(distKey));
+        return distKey;
     }
 
     function threshold() public view returns (uint256) {
