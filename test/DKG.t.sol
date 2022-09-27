@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import {DKG} from "../src/DKG.sol";
+import {DKGFactory} from "../src/DKGFactory.sol";
 import "ds-test/test.sol";
 
 interface CheatCodes {
@@ -15,7 +16,8 @@ contract DKGTest is DSTest {
     CheatCodes testing = CheatCodes(HEVM_ADDRESS);
 
     function setUp() public {
-        dkg = new DKG();
+        DKGFactory factory = new DKGFactory();
+        dkg = new DKG(factory);
     }
 
     function testExample() public {

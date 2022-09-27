@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Bn128} from "./Bn128.sol";
+import {DKGFactory} from "./DKGFactory.sol";
 
 interface IThresholdNetwork {
     function distributedKey() external view returns (Bn128.G1Point memory);
@@ -52,6 +53,10 @@ contract DKG is Ownable, IThresholdNetwork {
     // public key aggregated in "real time", each time a new deal comes in or a
     // new valid complaint comes in
     Bn128.G1Point internal distKey = Bn128.g1Zero();
+
+    // Parent Factory
+    DKGFactory private factory;
+
     // event emitted when the DKG is ready to start
 
     event NewParticipant(address from, uint32 index, uint256 tmpKey);
@@ -61,11 +66,12 @@ contract DKG is Ownable, IThresholdNetwork {
     );
     event ValidComplaint(address from, uint32 evicted);
 
-    constructor() Ownable() {
+    constructor(DKGFactory _factory) Ownable() {
         init_time = block.number;
         registration_time = init_time + BLOCKS_PER_PHASE;
         deal_time = registration_time + BLOCKS_PER_PHASE;
         complaint_time = deal_time + BLOCKS_PER_PHASE;
+        factory = _factory;
     }
 
     // Registers a participants and assigns him an index in the group
@@ -77,6 +83,7 @@ contract DKG is Ownable, IThresholdNetwork {
         //require(_tmpKey != 0, "Invalid key");
         // TODO check for uniqueness of the key as well
         require(address_index[msg.sender] == 0, "Already registered participant");
+        require(factory.isAuthorizedNode(msg.sender), "Not allowed to register");
         // index will start at 1
         nbRegistered++;
         uint32 index = nbRegistered;
