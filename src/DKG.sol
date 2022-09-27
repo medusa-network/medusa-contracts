@@ -9,6 +9,15 @@ interface IThresholdNetwork {
     function distributedKey() external view returns (Bn128.G1Point memory);
 }
 
+error InvalidPhase();
+error ParticipantLimit();
+error AlreadyRegistered();
+error NotAuthorized();
+error NotRegistered();
+error InvalidSharesCount();
+error InvalidCommitmentsCount();
+error InvalidCommitment(uint256 index);
+
 contract DKG is Ownable, IThresholdNetwork {
     // The maximum number of participants
     uint16 public constant MAX_PARTICIPANTS = 1000;
@@ -49,7 +58,7 @@ contract DKG is Ownable, IThresholdNetwork {
     // list of index of the nodes currently accepted.
     uint32[] private nodeIndex;
     // number of users registered, serves to designate the index
-    uint32 nbRegistered = 0;
+    uint32 private nbRegistered = 0;
     // public key aggregated in "real time", each time a new deal comes in or a
     // new valid complaint comes in
     Bn128.G1Point internal distKey = Bn128.g1Zero();
@@ -77,13 +86,21 @@ contract DKG is Ownable, IThresholdNetwork {
     // Registers a participants and assigns him an index in the group
     // TODO make it payable in a super contract
     function registerParticipant(uint256 _tmpKey) public {
-        require(isInRegistrationPhase(), "You can not register yet!");
-        require(nbRegistered < MAX_PARTICIPANTS, "too many participants registered");
+        if (!isInRegistrationPhase()) {
+            revert InvalidPhase();
+        }
+        if (nbRegistered >= MAX_PARTICIPANTS) {
+            revert ParticipantLimit();
+        }
         // TODO check for BN128 subgroup instead
         //require(_tmpKey != 0, "Invalid key");
         // TODO check for uniqueness of the key as well
-        require(addressIndex[msg.sender] == 0, "Already registered participant");
-        require(factory.isAuthorizedNode(msg.sender), "Not allowed to register");
+        if (addressIndex[msg.sender] != 0) {
+            revert AlreadyRegistered();
+        }
+        if (!factory.isAuthorizedNode(msg.sender)) {
+            revert NotAuthorized();
+        }
         // index will start at 1
         nbRegistered++;
         uint32 index = nbRegistered;
@@ -118,16 +135,24 @@ contract DKG is Ownable, IThresholdNetwork {
 
     function submitDealBundle(DealBundle memory _bundle) public isRegistered {
         uint32 index = indexOfSender();
-        require(isInDealPhase(), "DKG is not in the deal phase");
-        require(index != 0, "Not registered sender");
+        if (!isInDealPhase()) {
+            revert InvalidPhase();
+        }
+        if (index == 0) {
+            revert NotRegistered();
+        }
         // 1. Check he submitted enough encrypted shares
         // We expect the dealer to submit his own too.
         // TODO : do we have too ?
-        require(_bundle.encryptedShares.length == numberParticipants(), "Different number of encrypted shares");
+        if (_bundle.encryptedShares.length != numberParticipants()) {
+            revert InvalidSharesCount();
+        }
         // 2. Check he submitted enough committed coefficients
         // TODO Check actual bn128 check on each of them
         uint256 len = threshold();
-        require(_bundle.commitment.length == len, "Invalid number of commitments");
+        if (_bundle.commitment.length != len) {
+            revert InvalidCommitmentsCount();
+        }
         // 3. Check that commitments are all on the bn128 curve by decompressing
         // them
         // TODO hash
@@ -135,7 +160,9 @@ contract DKG is Ownable, IThresholdNetwork {
         for (uint256 i = 0; i < len; i++) {
             // TODO save the addition of those if successful later
             //comms[i] = Bn128.g1Decompress(bytes32(_commitment[i]));
-            require(Bn128.isG1PointOnCurve(_bundle.commitment[i]), "point not on curve");
+            if (!Bn128.isG1PointOnCurve(_bundle.commitment[i])) {
+                revert InvalidCommitment(i);
+            }
             //compressed[i] = uint256(Bn128.g1Compress(_commitment[i]));
         }
         // 3. Compute and store the hash
@@ -156,7 +183,9 @@ contract DKG is Ownable, IThresholdNetwork {
 
     // Returns the list of indexes of QUALIFIED participants at the end of the DKG.
     function participantIndexes() public view returns (uint32[] memory) {
-        require(isDone(), "indexes are of no interest if the DKG is not finished");
+        if (!isDone()) {
+            revert InvalidPhase();
+        }
         return nodeIndex;
     }
 
@@ -173,7 +202,9 @@ contract DKG is Ownable, IThresholdNetwork {
     }
 
     modifier isRegistered() {
-        require(addressIndex[msg.sender] != 0, "You are not registered for the DKG");
+        if (addressIndex[msg.sender] == 0) {
+            revert NotRegistered();
+        }
         _;
     }
 

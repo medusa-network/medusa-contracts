@@ -25,6 +25,8 @@ interface IEncryptionOracle is IThresholdNetwork {
     event ReencryptionRequest(uint256 indexed cipherId, uint256 requestId, uint256 pubx, uint256 puby, address client);
 }
 
+error RequestDoesNotExist();
+
 contract EncryptionOracle is IEncryptionOracle {
     // TODO authorization
     // who are the oracles sender that are allowed to push results
@@ -79,7 +81,7 @@ contract EncryptionOracle is IEncryptionOracle {
         return requestId;
     }
 
-    function requestDoExists(uint256 id) private view returns (bool) {
+    function requestExists(uint256 id) private view returns (bool) {
         PendingRequest memory pr = pendingRequests[id];
         return pr.client != address(0);
     }
@@ -90,7 +92,9 @@ contract EncryptionOracle is IEncryptionOracle {
     // probably zkproofs are sufficient to guarantee this once implemented
     function deliverReencryption(uint256 _requestId, IEncryptionOracle.Ciphertext memory _cipher) public {
         // TODO check that sender is authorized
-        require(requestDoExists(_requestId));
+        if (!requestExists(_requestId)) {
+            revert RequestDoesNotExist();
+        }
         PendingRequest memory pr = pendingRequests[_requestId];
         delete(pendingRequests[_requestId]);
         IEncryptionClient client = IEncryptionClient(pr.client);

@@ -1,47 +1,42 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {DKG} from "../src/DKG.sol";
+import {DKG, NotAuthorized, AlreadyRegistered, ParticipantLimit} from "../src/DKG.sol";
 import {DKGFactory} from "../src/DKGFactory.sol";
-import "ds-test/test.sol";
+import "forge-std/Test.sol";
 
-interface CheatCodes {
-    function roll(uint256) external;
-    function prank(address) external;
-    function expectRevert(bytes calldata) external;
-}
-
-contract DKGTest is DSTest {
-    DKG dkg;
-    CheatCodes testing = CheatCodes(HEVM_ADDRESS);
+contract DKGTest is Test {
+    DKG private dkg;
+    DKGFactory private factory;
 
     function setUp() public {
-        DKGFactory factory = new DKGFactory();
+        factory = new DKGFactory();
         dkg = new DKG(factory);
-    }
-
-    function testExample() public {
-        assertTrue(true);
+        factory.addAuthorizedNode(address(this));
     }
 
     function testStatus() public {
-        testing.roll(block.number + 1);
+        vm.roll(block.number + 1);
         dkg.registerParticipant(1);
     }
 
     function testRegister() public {
-        testing.roll(block.number + 1);
+        vm.roll(block.number + 1);
         assertEq(dkg.numberParticipants(), 0);
         dkg.registerParticipant(1); // key != 0
-        testing.expectRevert(bytes("Already registered participant"));
+        vm.expectRevert(AlreadyRegistered.selector);
         dkg.registerParticipant(10); // the address matters
 
         for (uint256 i = 1; i < dkg.MAX_PARTICIPANTS(); i++) {
-            testing.prank(address(uint160(i)));
+            address nextParticipant = address(uint160(i));
+            factory.addAuthorizedNode(nextParticipant);
+            vm.prank(nextParticipant);
             dkg.registerParticipant(i + 1); // key != 0
             assertEq(dkg.numberParticipants(), i + 1);
         }
-        testing.expectRevert(bytes("too many participants registered"));
+        address nextParticipant = address(uint160(dkg.MAX_PARTICIPANTS()));
+        vm.prank(nextParticipant);
+        vm.expectRevert(ParticipantLimit.selector);
         dkg.registerParticipant(1);
     }
 }
