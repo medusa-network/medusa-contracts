@@ -2,23 +2,31 @@
 pragma solidity ^0.8.17;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
 import {EncryptionOracle} from "./EncryptionOracle.sol";
 import {Bn128} from "./Bn128.sol";
 
+error UnsupportedSuite();
+
 contract OracleFactory is Ownable {
-    EncryptionOracle oracle;
+    mapping(bytes32 => address) public oracles;
 
-    event NewOracleCreated(address _oracle);
+    event NewOracleCreated(bytes32 id, address oracle);
 
-    function startNewOracle(Bn128.G1Point memory _distKey) public onlyOwner returns (address) {
-        // For demo useless restriction more annoying than anything
-        // TODO require(isOracleNull() || isOracleDone(), "oracle not in good stage");
-        oracle = new EncryptionOracle(_distKey);
-        emit NewOracleCreated(address(oracle));
-        return address(oracle);
-    }
+    enum Suite {BN254_KEYG1_HGAMAL}
 
-    function isOracleNull() internal view returns (bool) {
-        return address(oracle) == address(0);
+    function deployNewOracle(Bn128.G1Point memory _distKey, Suite _suite) public onlyOwner returns (bytes32, address) {
+        EncryptionOracle oracle;
+        if (_suite == Suite.BN254_KEYG1_HGAMAL) {
+            oracle = new BN254EncryptionOracle(_distKey);
+        } else {
+            revert UnsupportedSuite();
+        }
+
+        bytes32 oracleId = keccak256(abi.encode(block.chainid, address(oracle)));
+        oracles[oracleId] = address(oracle);
+
+        emit NewOracleCreated(oracleId, address(oracle));
+        return (oracleId, address(oracle));
     }
 }

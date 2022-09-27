@@ -2,22 +2,16 @@
 pragma solidity ^0.8.17;
 
 import {IEncryptionOracle as IO, EncryptionOracle} from "../src/EncryptionOracle.sol";
+import {BN254EncryptionOracle} from "../src/BN254EncryptionOracle.sol";
 import {RoleACL} from "../src/RoleACL.sol";
 import {Bn128} from "../src/Bn128.sol";
-import "ds-test/test.sol";
+import "forge-std/Test.sol";
 
-interface CheatCodes {
-    function roll(uint256) external;
-    function prank(address) external;
-    function expectRevert(bytes calldata) external;
-}
-
-contract RoleACLTest is DSTest {
+contract RoleACLTest is Test {
     IO oracle;
-    CheatCodes testing = CheatCodes(HEVM_ADDRESS);
 
     function setUp() public {
-        oracle = new EncryptionOracle(Bn128.g1Zero());
+        oracle = new BN254EncryptionOracle(Bn128.g1Zero());
     }
 
     function testSubmitCiphertext() public {
@@ -27,7 +21,7 @@ contract RoleACLTest is DSTest {
         uint256 id = acl.submitCiphertext(c);
         address bob = address(0x02);
         acl.grantRoleKey(acl.READER_ROLE(), bob, key);
-        testing.prank(bob);
+        vm.prank(bob);
         acl.askForDecryption(id);
     }
 }

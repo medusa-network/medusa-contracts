@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import {IThresholdNetwork} from "./DKG.sol";
 import {Bn128} from "./Bn128.sol";
+import {OracleFactory} from "./OracleFactory.sol";
 
 interface IEncryptionClient {
     function oracleResult(uint256 requestId, IEncryptionOracle.Ciphertext memory _cipher) external;
@@ -27,7 +28,7 @@ interface IEncryptionOracle is IThresholdNetwork {
 
 error RequestDoesNotExist();
 
-contract EncryptionOracle is IEncryptionOracle {
+abstract contract EncryptionOracle is IEncryptionOracle {
     // TODO authorization
     // who are the oracles sender that are allowed to push results
     //mapping(address => bool) authorized_oracle;
@@ -104,4 +105,6 @@ contract EncryptionOracle is IEncryptionOracle {
     function distributedKey() external view returns (Bn128.G1Point memory) {
         return distKey;
     }
+
+    function suite() external pure virtual returns (OracleFactory.Suite);
 }

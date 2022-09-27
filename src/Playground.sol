@@ -2,17 +2,18 @@
 pragma solidity ^0.8.17;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {EncryptionOracle, IEncryptionOracle as IO} from "./EncryptionOracle.sol";
+import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
+import {IEncryptionOracle as IO} from "./EncryptionOracle.sol";
 import "./Bn128.sol";
 /*import "./altbn128.sol";*/
 
-contract Playground is EncryptionOracle, Ownable {
+contract Playground is BN254EncryptionOracle, Ownable {
     uint256 private nonce;
 
     Bn128.G1Point private accumulator;
     /*altbn128.G1Point private acc2;*/
 
-    constructor() EncryptionOracle(Bn128.g1Zero()) {
+    constructor() BN254EncryptionOracle(Bn128.g1Zero()) {
         accumulator = Bn128.g1Zero();
         /*acc2 = altbn128.P1();*/
         /*acc2.X = 0;*/
