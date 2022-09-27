@@ -8,7 +8,7 @@ interface IThresholdNetwork {
     function distributedKey() external view returns (Bn128.G1Point memory);
 }
 
-contract DKGManager is Ownable, IThresholdNetwork {
+contract DKG is Ownable, IThresholdNetwork {
     // The maximum number of participants
     uint16 public constant MAX_PARTICIPANTS = 1000;
     // how many rounds/blocks compose one DKG phase

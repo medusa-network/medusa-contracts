@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "../src/DkgManager.sol";
+import {DKG} from "../src/DKG.sol";
 import "ds-test/test.sol";
 
 interface CheatCodes {
@@ -11,11 +11,11 @@ interface CheatCodes {
 }
 
 contract DKGTest is DSTest {
-    DKGManager manager;
+    DKG dkg;
     CheatCodes testing = CheatCodes(HEVM_ADDRESS);
 
     function setUp() public {
-        manager = new DKGManager();
+        dkg = new DKG();
     }
 
     function testExample() public {
@@ -24,22 +24,22 @@ contract DKGTest is DSTest {
 
     function testStatus() public {
         testing.roll(block.number + 1);
-        manager.registerParticipant(1);
+        dkg.registerParticipant(1);
     }
 
     function testRegister() public {
         testing.roll(block.number + 1);
-        assertEq(manager.numberParticipants(), 0);
-        manager.registerParticipant(1); // key != 0
+        assertEq(dkg.numberParticipants(), 0);
+        dkg.registerParticipant(1); // key != 0
         testing.expectRevert(bytes("Already registered participant"));
-        manager.registerParticipant(10); // the address matters
+        dkg.registerParticipant(10); // the address matters
 
-        for (uint256 i = 1; i < manager.MAX_PARTICIPANTS(); i++) {
+        for (uint256 i = 1; i < dkg.MAX_PARTICIPANTS(); i++) {
             testing.prank(address(uint160(i)));
-            manager.registerParticipant(i + 1); // key != 0
-            assertEq(manager.numberParticipants(), i + 1);
+            dkg.registerParticipant(i + 1); // key != 0
+            assertEq(dkg.numberParticipants(), i + 1);
         }
         testing.expectRevert(bytes("too many participants registered"));
-        manager.registerParticipant(1);
+        dkg.registerParticipant(1);
     }
 }

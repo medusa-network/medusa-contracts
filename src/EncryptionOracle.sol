@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {IThresholdNetwork} from "./DkgManager.sol";
+import {IThresholdNetwork} from "./DKG.sol";
 import {Bn128} from "./Bn128.sol";
 
 interface IEncryptionClient {
