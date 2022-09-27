@@ -35,6 +35,7 @@ contract DKGTest is Test {
             assertEq(dkg.numberParticipants(), i + 1);
         }
         address nextParticipant = address(uint160(dkg.MAX_PARTICIPANTS()));
+        factory.addAuthorizedNode(nextParticipant);
         vm.prank(nextParticipant);
         vm.expectRevert(ParticipantLimit.selector);
         dkg.registerParticipant(1);

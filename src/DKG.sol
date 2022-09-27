@@ -24,10 +24,11 @@ contract DKG is Ownable, IThresholdNetwork {
     // how many rounds/blocks compose one DKG phase
     uint8 public constant BLOCKS_PER_PHASE = 10;
 
-    enum PHASE {
-        INIT,
+    enum Phase {
         REGISTRATION,
-        DEAL
+        DEAL,
+        COMPLAINT,
+        DONE
     }
 
     uint256 public initTime;
@@ -85,10 +86,7 @@ contract DKG is Ownable, IThresholdNetwork {
 
     // Registers a participants and assigns him an index in the group
     // TODO make it payable in a super contract
-    function registerParticipant(uint256 _tmpKey) public {
-        if (!isInRegistrationPhase()) {
-            revert InvalidPhase();
-        }
+    function registerParticipant(uint256 _tmpKey) public onlyAuthorized onlyPhase(Phase.REGISTRATION) {
         if (nbRegistered >= MAX_PARTICIPANTS) {
             revert ParticipantLimit();
         }
@@ -97,9 +95,6 @@ contract DKG is Ownable, IThresholdNetwork {
         // TODO check for uniqueness of the key as well
         if (addressIndex[msg.sender] != 0) {
             revert AlreadyRegistered();
-        }
-        if (!factory.isAuthorizedNode(msg.sender)) {
-            revert NotAuthorized();
         }
         // index will start at 1
         nbRegistered++;
@@ -133,14 +128,8 @@ contract DKG is Ownable, IThresholdNetwork {
     //for
     //}
 
-    function submitDealBundle(DealBundle memory _bundle) public isRegistered {
+    function submitDealBundle(DealBundle memory _bundle) public onlyRegistered onlyPhase(Phase.DEAL) {
         uint32 index = indexOfSender();
-        if (!isInDealPhase()) {
-            revert InvalidPhase();
-        }
-        if (index == 0) {
-            revert NotRegistered();
-        }
         // 1. Check he submitted enough encrypted shares
         // We expect the dealer to submit his own too.
         // TODO : do we have too ?
@@ -176,16 +165,13 @@ contract DKG is Ownable, IThresholdNetwork {
         emitDealBundle(index, _bundle);
     }
 
-    function submitComplaintBundle() public {
+    function submitComplaintBundle() public onlyRegistered onlyPhase(Phase.COMPLAINT) {
         // TODO
         emit ValidComplaint(msg.sender, 0);
     }
 
     // Returns the list of indexes of QUALIFIED participants at the end of the DKG.
-    function participantIndexes() public view returns (uint32[] memory) {
-        if (!isDone()) {
-            revert InvalidPhase();
-        }
+    function participantIndexes() public view onlyPhase(Phase.DONE) returns (uint32[] memory) {
         return nodeIndex;
     }
 
@@ -201,9 +187,37 @@ contract DKG is Ownable, IThresholdNetwork {
         return numberParticipants() / 2 + 1;
     }
 
-    modifier isRegistered() {
+    modifier onlyRegistered() {
         if (addressIndex[msg.sender] == 0) {
             revert NotRegistered();
+        }
+        _;
+    }
+
+    modifier onlyAuthorized() {
+        if (!factory.isAuthorizedNode(msg.sender)) {
+            revert NotAuthorized();
+        }
+        _;
+    }
+
+    modifier onlyPhase(Phase phase) {
+        if (phase == Phase.REGISTRATION) {
+            if (!isInRegistrationPhase()) {
+                revert InvalidPhase();
+            }
+        } else if (phase == Phase.DEAL) {
+            if (!isInDealPhase()) {
+                revert InvalidPhase();
+            }
+        } else if (phase == Phase.COMPLAINT) {
+            if (!isInComplaintPhase()) {
+                revert InvalidPhase();
+            }
+        } else if (phase == Phase.DONE) {
+            if (!isDone()) {
+                revert InvalidPhase();
+            }
         }
         _;
     }
