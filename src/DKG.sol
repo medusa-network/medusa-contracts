@@ -21,33 +21,33 @@ contract DKG is Ownable, IThresholdNetwork {
         DEAL
     }
 
-    uint256 public init_time;
-    uint256 public registration_time;
-    uint256 public deal_time;
-    uint256 public complaint_time;
+    uint256 public initTime;
+    uint256 public registrationTime;
+    uint256 public dealTime;
+    uint256 public complaintTime;
 
     function isInRegistrationPhase() public view returns (bool) {
-        return block.number >= init_time && block.number < registration_time;
+        return block.number >= initTime && block.number < registrationTime;
     }
 
     function isInDealPhase() public view returns (bool) {
-        return block.number >= registration_time && block.number < deal_time;
+        return block.number >= registrationTime && block.number < dealTime;
     }
 
     function isInComplaintPhase() public view returns (bool) {
-        return block.number >= deal_time && block.number < complaint_time;
+        return block.number >= dealTime && block.number < complaintTime;
     }
 
     function isDone() public view returns (bool) {
-        return block.number >= complaint_time;
+        return block.number >= complaintTime;
     }
 
     // list of participant index -> hash of the deals
-    mapping(uint32 => uint256) private deal_hashes;
+    mapping(uint32 => uint256) private dealHashes;
     // list participant address -> index in the DKG
-    mapping(address => uint32) private address_index;
+    mapping(address => uint32) private addressIndex;
     // list of index of the nodes currently accepted.
-    uint32[] private node_index;
+    uint32[] private nodeIndex;
     // number of users registered, serves to designate the index
     uint32 nbRegistered = 0;
     // public key aggregated in "real time", each time a new deal comes in or a
@@ -62,15 +62,15 @@ contract DKG is Ownable, IThresholdNetwork {
     event NewParticipant(address from, uint32 index, uint256 tmpKey);
     // TODO change when this is fixed https://github.com/gakonst/ethers-rs/issues/1220
     event DealBundleSubmitted(
-        uint256 dealer_idx, Bn128.G1Point random, uint32[] indices, uint256[] shares, Bn128.G1Point[] commitment
+        uint256 dealerIdx, Bn128.G1Point random, uint32[] indices, uint256[] shares, Bn128.G1Point[] commitment
     );
     event ValidComplaint(address from, uint32 evicted);
 
     constructor(DKGFactory _factory) Ownable() {
-        init_time = block.number;
-        registration_time = init_time + BLOCKS_PER_PHASE;
-        deal_time = registration_time + BLOCKS_PER_PHASE;
-        complaint_time = deal_time + BLOCKS_PER_PHASE;
+        initTime = block.number;
+        registrationTime = initTime + BLOCKS_PER_PHASE;
+        dealTime = registrationTime + BLOCKS_PER_PHASE;
+        complaintTime = dealTime + BLOCKS_PER_PHASE;
         factory = _factory;
     }
 
@@ -82,13 +82,13 @@ contract DKG is Ownable, IThresholdNetwork {
         // TODO check for BN128 subgroup instead
         //require(_tmpKey != 0, "Invalid key");
         // TODO check for uniqueness of the key as well
-        require(address_index[msg.sender] == 0, "Already registered participant");
+        require(addressIndex[msg.sender] == 0, "Already registered participant");
         require(factory.isAuthorizedNode(msg.sender), "Not allowed to register");
         // index will start at 1
         nbRegistered++;
         uint32 index = nbRegistered;
-        node_index.push(index);
-        address_index[msg.sender] = index;
+        nodeIndex.push(index);
+        addressIndex[msg.sender] = index;
         emit NewParticipant(msg.sender, index, _tmpKey);
     }
 
@@ -99,12 +99,12 @@ contract DKG is Ownable, IThresholdNetwork {
     struct DealBundle {
         Bn128.G1Point random;
         uint32[] indices;
-        uint256[] encrypted_shares;
+        uint256[] encryptedShares;
         Bn128.G1Point[] commitment;
     }
 
     function emitDealBundle(uint32 _index, DealBundle memory _bundle) private {
-        emit DealBundleSubmitted(_index, _bundle.random, _bundle.indices, _bundle.encrypted_shares, _bundle.commitment);
+        emit DealBundleSubmitted(_index, _bundle.random, _bundle.indices, _bundle.encryptedShares, _bundle.commitment);
     }
 
     // TODO
@@ -123,7 +123,7 @@ contract DKG is Ownable, IThresholdNetwork {
         // 1. Check he submitted enough encrypted shares
         // We expect the dealer to submit his own too.
         // TODO : do we have too ?
-        require(_bundle.encrypted_shares.length == numberParticipants(), "Different number of encrypted shares");
+        require(_bundle.encryptedShares.length == numberParticipants(), "Different number of encrypted shares");
         // 2. Check he submitted enough committed coefficients
         // TODO Check actual bn128 check on each of them
         uint256 len = threshold();
@@ -157,7 +157,7 @@ contract DKG is Ownable, IThresholdNetwork {
     // Returns the list of indexes of QUALIFIED participants at the end of the DKG.
     function participantIndexes() public view returns (uint32[] memory) {
         require(isDone(), "indexes are of no interest if the DKG is not finished");
-        return node_index;
+        return nodeIndex;
     }
 
     function distributedKey() public view override returns (Bn128.G1Point memory) {
@@ -173,11 +173,11 @@ contract DKG is Ownable, IThresholdNetwork {
     }
 
     modifier isRegistered() {
-        require(address_index[msg.sender] != 0, "You are not registered for the DKG");
+        require(addressIndex[msg.sender] != 0, "You are not registered for the DKG");
         _;
     }
 
     function indexOfSender() public view returns (uint32) {
-        return address_index[msg.sender];
+        return addressIndex[msg.sender];
     }
 }
