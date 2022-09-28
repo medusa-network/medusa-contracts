@@ -14,7 +14,7 @@ contract DKGFactory is Ownable {
 
     event NewDKGCreated(bytes32 id, address dkg);
 
-    function startNewDkg() public onlyOwner returns (bytes32, address) {
+    function deployNewDKG() public onlyOwner returns (bytes32, address) {
         DKG dkg = new DKG(this);
         bytes32 dkgId = keccak256(abi.encode(block.chainid, address(dkg)));
         dkgAddresses[dkgId] = address(dkg);
