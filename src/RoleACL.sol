@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.8.10;
+pragma solidity ^0.8.17;
 
 import {IEncryptionOracle as IO, IEncryptionClient} from "./EncryptionOracle.sol";
 import "./Bn128.sol";
@@ -24,17 +24,15 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
         oracle = IO(_oracleAddress);
     }
 
-    // TODO Fix with a proper struct once
-    // https://github.com/gakonst/ethers-rs/issues/1219 is fixed
     // request id
     // TODO fix by giving the ciphertext ID AND the request ID
     // we can't differentiate otherwise
-    event NewOracleResult(uint256 request_id, uint256 rx, uint256 ry, uint256 cipher);
+    event NewOracleResult(uint256 requestId, IO.Ciphertext ciphertext);
 
-    function oracleResult(uint256 _request_id, IO.Ciphertext memory _cipher) external {
+    function oracleResult(uint256 _requestId, IO.Ciphertext memory _cipher) external {
         require(msg.sender == address(oracle), "only oracle can submit results");
         // TODO : some checks ? do we handle pending requests here etc ?
-        emit NewOracleResult(_request_id, _cipher.random.x, _cipher.random.y, _cipher.cipher);
+        emit NewOracleResult(_requestId, _cipher);
     }
 
     // TODO add different roles, payable etc
@@ -49,7 +47,12 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
         oracle.requestReencryption(_id, pubkey);
     }
 
-    function grantRole(bytes32 _role, address) public view override onlyRole(getRoleAdmin(_role)) {
+    function grantRole(bytes32 _role, address)
+        public
+        view
+        override (AccessControl, IAccessControl)
+        onlyRole(getRoleAdmin(_role))
+    {
         // TODO check if there are other public functions to restrict
         require(false, "This can not be called - call grantRoleKey");
     }
@@ -64,7 +67,12 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
         addressToKey[_account] = _pubkey;
     }
 
-    function revokeRole(bytes32 _role, address _account) public virtual override onlyRole(getRoleAdmin(_role)) {
+    function revokeRole(bytes32 _role, address _account)
+        public
+        virtual
+        override (AccessControl, IAccessControl)
+        onlyRole(getRoleAdmin(_role))
+    {
         super.revokeRole(_role, _account);
         delete(addressToKey[_account]);
     }

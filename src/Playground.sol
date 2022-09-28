@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.8.10;
+pragma solidity ^0.8.17;
 
-import {EncryptionOracle, IEncryptionOracle as IO} from "./EncryptionOracle.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
+import {IEncryptionOracle as IO} from "./EncryptionOracle.sol";
 import "./Bn128.sol";
 /*import "./altbn128.sol";*/
 
-contract Playground is EncryptionOracle {
+contract Playground is BN254EncryptionOracle, Ownable {
     uint256 private nonce;
 
     Bn128.G1Point private accumulator;
     /*altbn128.G1Point private acc2;*/
 
-    constructor() EncryptionOracle() {
+    constructor() BN254EncryptionOracle(Bn128.g1Zero()) {
         accumulator = Bn128.g1Zero();
         /*acc2 = altbn128.P1();*/
         /*acc2.X = 0;*/
@@ -35,7 +37,7 @@ contract Playground is EncryptionOracle {
     function setDistributedKey(Bn128.G1Point memory _point) public onlyOwner {
         require(nonce == 0, "distributed key already setup!");
         require(Bn128.isG1PointOnCurve(_point) == true, "point not on curve");
-        dist_key = _point;
+        distKey = _point;
         nonce = block.number;
     }
 
