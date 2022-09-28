@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Bn128} from "./Bn128.sol";
 import {DKGFactory} from "./DKGFactory.sol";
 
@@ -18,7 +17,7 @@ error InvalidSharesCount();
 error InvalidCommitmentsCount();
 error InvalidCommitment(uint256 index);
 
-contract DKG is Ownable, IThresholdNetwork {
+contract DKG is IThresholdNetwork {
     // The maximum number of participants
     uint16 public constant MAX_PARTICIPANTS = 1000;
     // how many rounds/blocks compose one DKG phase
@@ -76,7 +75,7 @@ contract DKG is Ownable, IThresholdNetwork {
     );
     event ValidComplaint(address from, uint32 evicted);
 
-    constructor(DKGFactory _factory) Ownable() {
+    constructor(DKGFactory _factory) {
         initTime = block.number;
         registrationTime = initTime + BLOCKS_PER_PHASE;
         dealTime = registrationTime + BLOCKS_PER_PHASE;
