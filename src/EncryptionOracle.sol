@@ -19,11 +19,9 @@ interface IEncryptionOracle is IThresholdNetwork {
     function requestReencryption(uint256 _cipherId, Bn128.G1Point memory _publickey) external returns (uint256);
     // returns the ciphertext id
     function submitCiphertext(Ciphertext memory _cipher) external returns (uint256);
-    // TODO Fix with a proper struct once
-    // https://github.com/gakonst/ethers-rs/issues/1219 is fixed
 
-    event NewCiphertext(uint256 indexed id, uint256 rx, uint256 ry, uint256 cipher, address client);
-    event ReencryptionRequest(uint256 indexed cipherId, uint256 requestId, uint256 pubx, uint256 puby, address client);
+    event NewCiphertext(uint256 indexed id, Ciphertext ciphertext, address client);
+    event ReencryptionRequest(uint256 indexed cipherId, uint256 requestId, Bn128.G1Point publicKey, address client);
 }
 
 error RequestDoesNotExist();
@@ -66,7 +64,7 @@ abstract contract EncryptionOracle is IEncryptionOracle {
 
     function submitCiphertext(IEncryptionOracle.Ciphertext memory _cipher) external returns (uint256) {
         uint256 id = newCipherId();
-        emit NewCiphertext(id, _cipher.random.x, _cipher.random.y, _cipher.cipher, msg.sender);
+        emit NewCiphertext(id, _cipher, msg.sender);
         return id;
     }
 
@@ -74,11 +72,11 @@ abstract contract EncryptionOracle is IEncryptionOracle {
     // the public key is the public key of the recipient. Note the msg.sender
     // MUST be the one that submitted the ciphertext in the first place
     // otherwise the oracle will not reply
-    function requestReencryption(uint256 _cipherId, Bn128.G1Point memory _publickey) public returns (uint256) {
+    function requestReencryption(uint256 _cipherId, Bn128.G1Point memory _publicKey) public returns (uint256) {
         // TODO check correct key
         uint256 requestId = newRequestId();
         pendingRequests[requestId] = PendingRequest(msg.sender);
-        emit ReencryptionRequest(_cipherId, requestId, _publickey.x, _publickey.y, msg.sender);
+        emit ReencryptionRequest(_cipherId, requestId, _publicKey, msg.sender);
         return requestId;
     }
 

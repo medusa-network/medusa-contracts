@@ -69,10 +69,7 @@ contract DKG is IThresholdNetwork {
     // event emitted when the DKG is ready to start
 
     event NewParticipant(address from, uint32 index, uint256 tmpKey);
-    // TODO change when this is fixed https://github.com/gakonst/ethers-rs/issues/1220
-    event DealBundleSubmitted(
-        uint256 dealerIdx, Bn128.G1Point random, uint32[] indices, uint256[] shares, Bn128.G1Point[] commitment
-    );
+    event DealBundleSubmitted(uint256 dealerIdx, DealBundle bundle);
     event ValidComplaint(address from, uint32 evicted);
 
     constructor(DKGFactory _factory) {
@@ -115,7 +112,7 @@ contract DKG is IThresholdNetwork {
     }
 
     function emitDealBundle(uint32 _index, DealBundle memory _bundle) private {
-        emit DealBundleSubmitted(_index, _bundle.random, _bundle.indices, _bundle.encryptedShares, _bundle.commitment);
+        emit DealBundleSubmitted(_index, _bundle);
     }
 
     // TODO

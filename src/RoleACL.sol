@@ -24,17 +24,15 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
         oracle = IO(_oracleAddress);
     }
 
-    // TODO Fix with a proper struct once
-    // https://github.com/gakonst/ethers-rs/issues/1219 is fixed
     // request id
     // TODO fix by giving the ciphertext ID AND the request ID
     // we can't differentiate otherwise
-    event NewOracleResult(uint256 requestId, uint256 rx, uint256 ry, uint256 cipher);
+    event NewOracleResult(uint256 requestId, IO.Ciphertext ciphertext);
 
     function oracleResult(uint256 _requestId, IO.Ciphertext memory _cipher) external {
         require(msg.sender == address(oracle), "only oracle can submit results");
         // TODO : some checks ? do we handle pending requests here etc ?
-        emit NewOracleResult(_requestId, _cipher.random.x, _cipher.random.y, _cipher.cipher);
+        emit NewOracleResult(_requestId, _cipher);
     }
 
     // TODO add different roles, payable etc
