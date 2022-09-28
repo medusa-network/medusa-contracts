@@ -25,6 +25,7 @@ interface IEncryptionOracle is IThresholdNetwork {
 }
 
 error RequestDoesNotExist();
+error OracleResultFailed(string errorMsg);
 
 abstract contract EncryptionOracle is IEncryptionOracle {
     // TODO authorization
@@ -89,7 +90,10 @@ abstract contract EncryptionOracle is IEncryptionOracle {
     // change, although we probably dont want to store it onchain? but then we
     // can't guarantee it's for the same, we have to "trust" the oracle  --
     // probably zkproofs are sufficient to guarantee this once implemented
-    function deliverReencryption(uint256 _requestId, IEncryptionOracle.Ciphertext memory _cipher) public {
+    function deliverReencryption(uint256 _requestId, IEncryptionOracle.Ciphertext memory _cipher)
+        public
+        returns (bool)
+    {
         // TODO check that sender is authorized
         if (!requestExists(_requestId)) {
             revert RequestDoesNotExist();
@@ -97,7 +101,13 @@ abstract contract EncryptionOracle is IEncryptionOracle {
         PendingRequest memory pr = pendingRequests[_requestId];
         delete(pendingRequests[_requestId]);
         IEncryptionClient client = IEncryptionClient(pr.client);
-        client.oracleResult(_requestId, _cipher);
+        try client.oracleResult(_requestId, _cipher) {
+            return true;
+        } catch Error(string memory reason) {
+            revert OracleResultFailed(reason);
+        } catch {
+            revert OracleResultFailed("Client does not support oracleResult() method");
+        }
     }
 
     function distributedKey() external view returns (Bn128.G1Point memory) {
