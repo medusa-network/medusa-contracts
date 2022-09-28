@@ -31,10 +31,29 @@ contract OracleFactoryTest is Test {
     }
 
     function testCannotDeployNewOracleIfUnsupportedSuite() public {
-        // TODO: How to pass unsupported Suite?
+        bytes4 deployNewOracleSelector = factory.deployNewOracle.selector;
+        Bn128.G1Point memory pubkey = Bn128.g1Zero();
+        uint256 unsupportedSuite = 1;
+        address factoryAddress = address(factory);
 
-        // OracleFactory.Suite suite = OracleFactory.Suite(12345) // Does not compile
-        // vm.expectRevert(UnsupportedSuite.selector);
-        // (bytes32 oracleId, address oracleAddress) = factory.deployNewOracle(Bn128.g1Zero(), suite);
+        // NOTE: We have to use assembly because constructing an Unsupported Suite is a compile-error in Solidity
+        // Copied from Solmate SafeTransferLib
+        // https://github.com/transmissions11/solmate/blob/main/src/utils/SafeTransferLib.sol#L38
+        bool success;
+        assembly {
+            // Get a pointer to some free memory.
+            let freeMemoryPointer := mload(0x40)
+
+            // Write the abi-encoded calldata into memory, beginning with the function selector.
+            mstore(freeMemoryPointer, deployNewOracleSelector)
+            mstore(add(freeMemoryPointer, 4), pubkey) // Append the "_distKey" argument (64 bytes).
+            mstore(add(freeMemoryPointer, 68), unsupportedSuite) // Append the "_suite" argument (32 bytes).
+
+            success
+            // We use 100 because the length of our calldata totals up like so: 4 + 64 + 32.
+            // We use 0 and 0 because we don't need to copy the return data into the scratch space.
+            := call(gas(), factoryAddress, 0, freeMemoryPointer, 100, 0, 0)
+        }
+        assertFalse(success);
     }
 }
