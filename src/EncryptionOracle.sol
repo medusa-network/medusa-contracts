@@ -28,11 +28,6 @@ error RequestDoesNotExist();
 error OracleResultFailed(string errorMsg);
 
 abstract contract EncryptionOracle is IEncryptionOracle {
-    // TODO authorization
-    // who are the oracles sender that are allowed to push results
-    //mapping(address => bool) authorized_oracle;
-    address public authorizedClient;
-
     // public key set by OracleFactory on deployment
     Bn128.G1Point internal distKey;
 
