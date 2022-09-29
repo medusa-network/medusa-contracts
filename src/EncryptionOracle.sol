@@ -6,6 +6,10 @@ import {Bn128} from "./Bn128.sol";
 import {OracleFactory} from "./OracleFactory.sol";
 
 interface IEncryptionClient {
+    /// @notice Callback to client contract when medusa posts a result
+    /// @dev Implement in client contracts of medusa
+    /// @param requestId The id of the original request
+    /// @param _cipher the reencryption result
     function oracleResult(uint256 requestId, IEncryptionOracle.Ciphertext memory _cipher) external;
 }
 
@@ -15,81 +19,94 @@ interface IEncryptionOracle is IThresholdNetwork {
         uint256 cipher;
     }
 
-    // returns the request id
     function requestReencryption(uint256 _cipherId, Bn128.G1Point memory _publickey) external returns (uint256);
-    // returns the ciphertext id
     function submitCiphertext(Ciphertext memory _cipher) external returns (uint256);
 
+    /// @notice Emitted when a new cipher text is registered with medusa
+    /// @dev Broadcasts the id, cipher text, and client or owner of the cipher text
     event NewCiphertext(uint256 indexed id, Ciphertext ciphertext, address client);
+
+    /// @notice Emitted when a new request is sent to medusa
+    /// @dev Requests can be sent by clients that do not own the cipher text; must verify the request off-chain
     event ReencryptionRequest(uint256 indexed cipherId, uint256 requestId, Bn128.G1Point publicKey, address client);
 }
 
+/// @notice Reverts when delivering a response for a non-existent request
 error RequestDoesNotExist();
+
+/// @notice Reverts when the client's callback function reverts
 error OracleResultFailed(string errorMsg);
 
+/// @title An abstract EncryptionOracle that receives requests and posts results for reencryption
+/// @notice You must implement your encryption suite when inheriting from this contract
+/// @dev DOES NOT currently validate reencryption results OR implement fees for the medusa oracle network
 abstract contract EncryptionOracle is IEncryptionOracle {
-    // public key set by OracleFactory on deployment
-    Bn128.G1Point internal distKey;
+    /// @notice All instance contracts must implement their own encryption suite
+    /// @dev e.g. BN254_KEYG1_HGAMAL
+    /// @return suite of curve + encryption params supported by this contract
+    function suite() external pure virtual returns (OracleFactory.Suite);
 
+    /// @notice A pending reencryption request
+    /// @dev client client's address to callback with a response
     struct PendingRequest {
         address client;
     }
 
-    // pending request is used to track the reencryption requests, to make sure
-    // the medusa node callsback the same contract that submitted the request in
-    // the first place.
+    /// @notice The public key corresponding to the distributed private key registered for this contract
+    /// @dev This is passed in by the OracleFactory. Corresponds to an x-y point on an elliptic curve
+    Bn128.G1Point internal distKey;
+
+    /// @notice pendingRequests tracks the reencryption requests
+    /// @dev We use this to determine the client to callback with the result
     mapping(uint256 => PendingRequest) private pendingRequests;
-    // counter to derive unique nonces for each ciphertext ever submitted to the oracle
+
+    /// @notice counter to derive unique nonces for each ciphertext
     uint256 private cipherNonce = 0;
-    // counter to derive unique nonces for each reencryption request ever submitted to the oracle
+
+    /// @notice counter to derive unique nonces for each reencryption request
     uint256 private requestNonce = 0;
 
+    /// @notice Create a new oracle contract with a distributed public key
+    /// @dev The distributed key is created by an on-chain DKG process
+    /// @dev Verify the key by checking all DKG contracts deployed by Medusa operators
+    /// @param _distKey An x-y point representing a public key previously created by medusa nodes
     constructor(Bn128.G1Point memory _distKey) {
         distKey = _distKey;
     }
 
-    function newCipherId() private returns (uint256) {
-        cipherNonce += 1;
-        return cipherNonce;
-    }
-
-    function newRequestId() private returns (uint256) {
-        requestNonce += 1;
-        return requestNonce;
-    }
-
+    /// @notice Submit a new ciphertext and emit an event
+    /// @dev We only emit an event; no storage. We authorize future requests for this ciphertext off-chain.
+    /// @return the id of the newly registered ciphertext
     function submitCiphertext(IEncryptionOracle.Ciphertext memory _cipher) external returns (uint256) {
         uint256 id = newCipherId();
         emit NewCiphertext(id, _cipher, msg.sender);
         return id;
     }
 
-    // TODO payable etc
-    // the public key is the public key of the recipient. Note the msg.sender
-    // MUST be the one that submitted the ciphertext in the first place
-    // otherwise the oracle will not reply
+    /// @notice Request reencryption of a cipher text for a user
+    /// @dev msg.sender must be The "owner" or submitter of the ciphertext or the oracle will not reply
+    /// @param _cipherId the id of the ciphertext to reencrypt
+    /// @param _publicKey the public key of the recipient
+    /// @return the reencryption request id
+    /// @custom:todo Payable; users pay for the medusa network somehow (oracle gas + platform fee)
     function requestReencryption(uint256 _cipherId, Bn128.G1Point memory _publicKey) public returns (uint256) {
-        // TODO check correct key
+        /// @custom:todo check correct key
         uint256 requestId = newRequestId();
         pendingRequests[requestId] = PendingRequest(msg.sender);
         emit ReencryptionRequest(_cipherId, requestId, _publicKey, msg.sender);
         return requestId;
     }
 
-    function requestExists(uint256 id) private view returns (bool) {
-        PendingRequest memory pr = pendingRequests[id];
-        return pr.client != address(0);
-    }
-
-    // TODO cipher is not strictly required given that's the part that _doesn't_
-    // change, although we probably dont want to store it onchain? but then we
-    // can't guarantee it's for the same, we have to "trust" the oracle  --
-    // probably zkproofs are sufficient to guarantee this once implemented
+    /// @notice Oracle delivers the reencryption result
+    /// @dev Needs to verify the request, result and then callback to the client
+    /// @param _requestId the pending request id; used to callback the correct client
+    /// @param _cipher The reencryption result for the request
+    /// @return true if the client callback succeeds, otherwise reverts with OracleResultFailed
     function deliverReencryption(uint256 _requestId, IEncryptionOracle.Ciphertext memory _cipher)
         public
         returns (bool)
     {
-        // TODO check that sender is authorized
+        /// @custom:todo We need to verify a threshold signature to verify the cipher result
         if (!requestExists(_requestId)) {
             revert RequestDoesNotExist();
         }
@@ -109,5 +126,18 @@ abstract contract EncryptionOracle is IEncryptionOracle {
         return distKey;
     }
 
-    function suite() external pure virtual returns (OracleFactory.Suite);
+    function newCipherId() private returns (uint256) {
+        cipherNonce += 1;
+        return cipherNonce;
+    }
+
+    function newRequestId() private returns (uint256) {
+        requestNonce += 1;
+        return requestNonce;
+    }
+
+    function requestExists(uint256 id) private view returns (bool) {
+        PendingRequest memory pr = pendingRequests[id];
+        return pr.client != address(0);
+    }
 }
