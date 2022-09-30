@@ -4,10 +4,6 @@ pragma solidity ^0.8.17;
 import {Bn128} from "./Bn128.sol";
 import {DKGFactory} from "./DKGFactory.sol";
 
-interface IThresholdNetwork {
-    function distributedKey() external view returns (Bn128.G1Point memory);
-}
-
 error InvalidPhase();
 error ParticipantLimit();
 error AlreadyRegistered();
@@ -17,11 +13,30 @@ error InvalidSharesCount();
 error InvalidCommitmentsCount();
 error InvalidCommitment(uint256 index);
 
-contract DKG is IThresholdNetwork {
-    // The maximum number of participants
-    uint16 public constant MAX_PARTICIPANTS = 1000;
-    // how many rounds/blocks compose one DKG phase
-    uint8 public constant BLOCKS_PER_PHASE = 10;
+/// @title ThresholdNetwork
+/// @author Cryptonet
+/// @notice This contract represents a threshold network.
+/// @dev All threshold networks have a distributed key;
+/// the DKG contract facilitates the generation of a key, whereas Oracle contracts are given a key
+abstract contract ThresholdNetwork {
+    Bn128.G1Point internal distKey;
+
+    constructor(Bn128.G1Point memory _distKey) {
+        distKey = _distKey;
+    }
+
+    function distributedKey() external view virtual returns (Bn128.G1Point memory) {
+        return distKey;
+    }
+}
+
+interface IDKG {
+    struct DealBundle {
+        Bn128.G1Point random;
+        uint32[] indices;
+        uint256[] encryptedShares;
+        Bn128.G1Point[] commitment;
+    }
 
     enum Phase {
         REGISTRATION,
@@ -30,10 +45,105 @@ contract DKG is IThresholdNetwork {
         DONE
     }
 
+    /// @notice Emitted when a new participant registers during the registration phase.
+    /// @param from The address of the participant.
+    /// @param index The index of the participant.
+    /// @param tmpKey The temporary key of the participant.
+    event NewParticipant(address from, uint32 index, uint256 tmpKey);
+
+    /// @notice Emitted when a deal is submitted during the deal phase.
+    /// @param dealerIdx The index of the dealer submitting the deal.
+    /// @param bundle The deal bundle submitted by the dealer.
+    event DealBundleSubmitted(uint256 dealerIdx, DealBundle bundle);
+
+    /// @notice Emitted when a valid complaint is submitted during the complaint phase.
+    /// @param from The address of the participant who submitted the complaint.
+    /// @param evicted The index of the dealer who is evicted from the network.
+    event ValidComplaint(address from, uint32 evicted);
+}
+
+/// @title Distributed Key Generation
+/// @notice This contract implements the trusted mediator for the Deji DKG protocol.
+/// @dev The DKG protocol is a three-phase protocol. In the first phase, authorized nodes register as partcipants
+/// In the second phase, participants submit their deals.
+/// In the third phase, participants submit complaints for invalid deals.
+/// The contract verifies the commitments and computes the public key based on valid commitments.
+/// @author Cryptonet
+contract DKG is ThresholdNetwork, IDKG {
+    /// @notice The maximum number of participants
+    uint16 public constant MAX_PARTICIPANTS = 1000;
+
+    /// @notice Each phase lasts 10 blocks
+    uint8 public constant BLOCKS_PER_PHASE = 10;
+
+    /// @notice The block number at which this contract is deployed
     uint256 public initTime;
+
+    /// @notice The ending block number for each phase
     uint256 public registrationTime;
     uint256 public dealTime;
     uint256 public complaintTime;
+
+    /// @notice Maps participant index to hash of their deal
+    mapping(uint32 => uint256) private dealHashes;
+
+    /// @notice Maps participant address to their index in the DKG
+    mapping(address => uint32) private addressIndex;
+
+    /// @notice List of index of the nodes currently registered
+    uint32[] private nodeIndex;
+
+    /// @notice Number of nodes registered
+    /// @dev serves to designate the index
+    uint32 private nbRegistered = 0;
+
+    /// @notice The parent factory which deployed this contract
+    DKGFactory private factory;
+
+    modifier onlyRegistered() {
+        if (addressIndex[msg.sender] == 0) {
+            revert NotRegistered();
+        }
+        _;
+    }
+
+    modifier onlyAuthorized() {
+        if (!factory.isAuthorizedNode(msg.sender)) {
+            revert NotAuthorized();
+        }
+        _;
+    }
+
+    modifier onlyPhase(Phase phase) {
+        if (phase == Phase.REGISTRATION) {
+            if (!isInRegistrationPhase()) {
+                revert InvalidPhase();
+            }
+        } else if (phase == Phase.DEAL) {
+            if (!isInDealPhase()) {
+                revert InvalidPhase();
+            }
+        } else if (phase == Phase.COMPLAINT) {
+            if (!isInComplaintPhase()) {
+                revert InvalidPhase();
+            }
+        } else if (phase == Phase.DONE) {
+            if (!isDone()) {
+                revert InvalidPhase();
+            }
+        }
+        _;
+    }
+
+    /// @notice Create a new DKG with an empty public key
+    /// @dev The public key is aggregated in "real time" for each new deal or new valid complaint transaction
+    constructor(DKGFactory _factory) ThresholdNetwork(Bn128.g1Zero()) {
+        initTime = block.number;
+        registrationTime = initTime + BLOCKS_PER_PHASE;
+        dealTime = registrationTime + BLOCKS_PER_PHASE;
+        complaintTime = dealTime + BLOCKS_PER_PHASE;
+        factory = _factory;
+    }
 
     function isInRegistrationPhase() public view returns (bool) {
         return block.number >= initTime && block.number < registrationTime;
@@ -51,37 +161,10 @@ contract DKG is IThresholdNetwork {
         return block.number >= complaintTime;
     }
 
-    // list of participant index -> hash of the deals
-    mapping(uint32 => uint256) private dealHashes;
-    // list participant address -> index in the DKG
-    mapping(address => uint32) private addressIndex;
-    // list of index of the nodes currently accepted.
-    uint32[] private nodeIndex;
-    // number of users registered, serves to designate the index
-    uint32 private nbRegistered = 0;
-    // public key aggregated in "real time", each time a new deal comes in or a
-    // new valid complaint comes in
-    Bn128.G1Point internal distKey = Bn128.g1Zero();
-
-    // Parent Factory
-    DKGFactory private factory;
-
-    // event emitted when the DKG is ready to start
-
-    event NewParticipant(address from, uint32 index, uint256 tmpKey);
-    event DealBundleSubmitted(uint256 dealerIdx, DealBundle bundle);
-    event ValidComplaint(address from, uint32 evicted);
-
-    constructor(DKGFactory _factory) {
-        initTime = block.number;
-        registrationTime = initTime + BLOCKS_PER_PHASE;
-        dealTime = registrationTime + BLOCKS_PER_PHASE;
-        complaintTime = dealTime + BLOCKS_PER_PHASE;
-        factory = _factory;
-    }
-
-    // Registers a participants and assigns him an index in the group
-    // TODO make it payable in a super contract
+    /// @notice Registers a participant and assigns it an index in the group
+    /// @dev Only authorized nodes from the factory can register
+    /// @param _tmpKey The temporary key of the participant
+    /// @custom:todo make it payable in a super contract
     function registerParticipant(uint256 _tmpKey) public onlyAuthorized onlyPhase(Phase.REGISTRATION) {
         if (nbRegistered >= MAX_PARTICIPANTS) {
             revert ParticipantLimit();
@@ -100,21 +183,6 @@ contract DKG is IThresholdNetwork {
         emit NewParticipant(msg.sender, index, _tmpKey);
     }
 
-    function numberParticipants() public view returns (uint256) {
-        return nbRegistered;
-    }
-
-    struct DealBundle {
-        Bn128.G1Point random;
-        uint32[] indices;
-        uint256[] encryptedShares;
-        Bn128.G1Point[] commitment;
-    }
-
-    function emitDealBundle(uint32 _index, DealBundle memory _bundle) private {
-        emit DealBundleSubmitted(_index, _bundle);
-    }
-
     // TODO
     //function dealHash(DealBundle memory _bundle) pure returns (uint256) {
     //uint comm_len = 2 * 32 * _bundle.commitment.length;
@@ -124,6 +192,10 @@ contract DKG is IThresholdNetwork {
     //for
     //}
 
+    /// @notice Submit a deal bundle
+    /// @dev Can only be called by registered nodes while in the deal phase
+    /// @param _bundle The deal bundle; a struct containing the random point, the indices of the nodes to which the shares are encrypted,
+    /// the encrypted shares and the commitments to the shares
     function submitDealBundle(DealBundle memory _bundle) public onlyRegistered onlyPhase(Phase.DEAL) {
         uint32 index = indexOfSender();
         // 1. Check he submitted enough encrypted shares
@@ -161,9 +233,21 @@ contract DKG is IThresholdNetwork {
         emitDealBundle(index, _bundle);
     }
 
+    /// @notice Submit a complaint against a deal
+    /// @dev The complaint is valid if the deal is not valid and the complainer
+    /// has a share of the deal
+    /* /// @param _index The index of the deal to complain against
+    /// @param _encryptedShare The encrypted share of the complainer
+    /// @param _commitment The commitment of the complainer
+    /// @param _deal The deal to complain against */
+    /// @custom:todo Implement
     function submitComplaintBundle() public onlyRegistered onlyPhase(Phase.COMPLAINT) {
         // TODO
         emit ValidComplaint(msg.sender, 0);
+    }
+
+    function numberParticipants() public view returns (uint256) {
+        return nbRegistered;
     }
 
     // Returns the list of indexes of QUALIFIED participants at the end of the DKG.
@@ -171,10 +255,7 @@ contract DKG is IThresholdNetwork {
         return nodeIndex;
     }
 
-    function distributedKey() public view override returns (Bn128.G1Point memory) {
-        // Currently only demo so more annoying than anything else
-        // TODO
-        // require(isDone(),"don't fetch public key before DKG is done");
+    function distributedKey() public view override onlyPhase(Phase.DONE) returns (Bn128.G1Point memory) {
         //return uint256(Bn128.g1Compress(distKey));
         return distKey;
     }
@@ -183,42 +264,11 @@ contract DKG is IThresholdNetwork {
         return numberParticipants() / 2 + 1;
     }
 
-    modifier onlyRegistered() {
-        if (addressIndex[msg.sender] == 0) {
-            revert NotRegistered();
-        }
-        _;
-    }
-
-    modifier onlyAuthorized() {
-        if (!factory.isAuthorizedNode(msg.sender)) {
-            revert NotAuthorized();
-        }
-        _;
-    }
-
-    modifier onlyPhase(Phase phase) {
-        if (phase == Phase.REGISTRATION) {
-            if (!isInRegistrationPhase()) {
-                revert InvalidPhase();
-            }
-        } else if (phase == Phase.DEAL) {
-            if (!isInDealPhase()) {
-                revert InvalidPhase();
-            }
-        } else if (phase == Phase.COMPLAINT) {
-            if (!isInComplaintPhase()) {
-                revert InvalidPhase();
-            }
-        } else if (phase == Phase.DONE) {
-            if (!isDone()) {
-                revert InvalidPhase();
-            }
-        }
-        _;
-    }
-
     function indexOfSender() public view returns (uint32) {
         return addressIndex[msg.sender];
+    }
+
+    function emitDealBundle(uint32 _index, DealBundle memory _bundle) private {
+        emit DealBundleSubmitted(_index, _bundle);
     }
 }

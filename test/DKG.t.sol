@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import {
+    IDKG,
     DKG,
     NotAuthorized,
     NotRegistered,
@@ -28,7 +29,7 @@ contract DKGTest is Test {
         uint32[] memory indicies;
         uint256[] memory encryptedShares;
         Bn128.G1Point[] memory commitment;
-        return DKG.DealBundle(Bn128.g1Zero(), indicies, encryptedShares, commitment);
+        return IDKG.DealBundle(Bn128.g1Zero(), indicies, encryptedShares, commitment);
     }
 
     function testRegister() public {
