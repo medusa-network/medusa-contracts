@@ -8,13 +8,25 @@ import {Bn128} from "./Bn128.sol";
 
 error UnsupportedSuite();
 
+/// @title OracleFactory
+/// @author Cryptonet
+/// @notice Factory contract for creating encryption oracles
+/// @dev Deploys new oracles with a specified distributed key and encryption suite
+/// @dev The factory contract is the owner of all oracles it deploys
 contract OracleFactory is Ownable {
+    /// @notice Mapping from oracle ID to oracle address
     mapping(bytes32 => address) public oracles;
 
+    /// @notice Emitted when a new oracle is deployed
     event NewOracleCreated(bytes32 id, address oracle);
 
     enum Suite {BN254_KEYG1_HGAMAL}
 
+    /// @notice Deploys a new oracle with the specified distributed key and encryption suite
+    /// @dev Only the Factory owner can deploy a new oracle
+    /// @param _distKey The distributed key previously created by a DKG process
+    /// @param _suite The encryption suite to use
+    /// @return The id and address of the new oracle
     function deployNewOracle(Bn128.G1Point memory _distKey, Suite _suite) public onlyOwner returns (bytes32, address) {
         EncryptionOracle oracle;
         if (_suite == Suite.BN254_KEYG1_HGAMAL) {
