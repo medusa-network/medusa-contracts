@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {IThresholdNetwork} from "./DKG.sol";
+import {ThresholdNetwork} from "./DKG.sol";
 import {Bn128} from "./Bn128.sol";
 import {OracleFactory} from "./OracleFactory.sol";
 
@@ -13,7 +13,7 @@ interface IEncryptionClient {
     function oracleResult(uint256 requestId, IEncryptionOracle.Ciphertext memory _cipher) external;
 }
 
-interface IEncryptionOracle is IThresholdNetwork {
+interface IEncryptionOracle {
     struct Ciphertext {
         Bn128.G1Point random;
         uint256 cipher;
@@ -40,7 +40,7 @@ error OracleResultFailed(string errorMsg);
 /// @title An abstract EncryptionOracle that receives requests and posts results for reencryption
 /// @notice You must implement your encryption suite when inheriting from this contract
 /// @dev DOES NOT currently validate reencryption results OR implement fees for the medusa oracle network
-abstract contract EncryptionOracle is IEncryptionOracle {
+abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle {
     /// @notice All instance contracts must implement their own encryption suite
     /// @dev e.g. BN254_KEYG1_HGAMAL
     /// @return suite of curve + encryption params supported by this contract
@@ -51,10 +51,6 @@ abstract contract EncryptionOracle is IEncryptionOracle {
     struct PendingRequest {
         address client;
     }
-
-    /// @notice The public key corresponding to the distributed private key registered for this contract
-    /// @dev This is passed in by the OracleFactory. Corresponds to an x-y point on an elliptic curve
-    Bn128.G1Point internal distKey;
 
     /// @notice pendingRequests tracks the reencryption requests
     /// @dev We use this to determine the client to callback with the result
@@ -69,10 +65,10 @@ abstract contract EncryptionOracle is IEncryptionOracle {
     /// @notice Create a new oracle contract with a distributed public key
     /// @dev The distributed key is created by an on-chain DKG process
     /// @dev Verify the key by checking all DKG contracts deployed by Medusa operators
+    /// @notice The public key corresponding to the distributed private key registered for this contract
+    /// @dev This is passed in by the OracleFactory. Corresponds to an x-y point on an elliptic curve
     /// @param _distKey An x-y point representing a public key previously created by medusa nodes
-    constructor(Bn128.G1Point memory _distKey) {
-        distKey = _distKey;
-    }
+    constructor(Bn128.G1Point memory _distKey) ThresholdNetwork(_distKey) {}
 
     /// @notice Submit a new ciphertext and emit an event
     /// @dev We only emit an event; no storage. We authorize future requests for this ciphertext off-chain.
@@ -120,10 +116,6 @@ abstract contract EncryptionOracle is IEncryptionOracle {
         } catch {
             revert OracleResultFailed("Client does not support oracleResult() method");
         }
-    }
-
-    function distributedKey() external view returns (Bn128.G1Point memory) {
-        return distKey;
     }
 
     function newCipherId() private returns (uint256) {
