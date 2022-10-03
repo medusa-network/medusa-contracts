@@ -52,6 +52,41 @@ contract EncryptionOracleTest is Test {
         return Bn128.G1Point(23476, 23478);
     }
 
+    function testPause() public {
+        assertFalse(oracle.paused());
+        oracle.pause();
+        assertTrue(oracle.paused());
+    }
+
+    function testCannotPauseIfNotOwner() public {
+        address notOwner = makeAddr("notOwner");
+        vm.expectRevert("Ownable: caller is not the owner");
+        hoax(notOwner);
+
+        oracle.pause();
+        assertFalse(oracle.paused());
+    }
+
+    function testUnpause() public {
+        oracle.pause();
+        assertTrue(oracle.paused());
+
+        oracle.unpause();
+        assertFalse(oracle.paused());
+    }
+
+    function testCannotUnpauseIfNotOwner() public {
+        oracle.pause();
+        assertTrue(oracle.paused());
+
+        address notOwner = makeAddr("notOwner");
+        vm.expectRevert("Ownable: caller is not the owner");
+        hoax(notOwner);
+
+        oracle.unpause();
+        assertTrue(oracle.paused());
+    }
+
     function testSubmitCipherText() public {
         IEncryptionOracle.Ciphertext memory cipher = dummyCiphertext();
         vm.expectEmit(true, false, false, true);

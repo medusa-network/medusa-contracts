@@ -5,12 +5,14 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
 import {IEncryptionOracle as IO} from "./EncryptionOracle.sol";
 import "./Bn128.sol";
+
 /*import "./altbn128.sol";*/
 
-contract Playground is BN254EncryptionOracle, Ownable {
+contract Playground is BN254EncryptionOracle {
     uint256 private nonce;
 
     Bn128.G1Point private accumulator;
+
     /*altbn128.G1Point private acc2;*/
 
     constructor() BN254EncryptionOracle(Bn128.g1Zero()) {

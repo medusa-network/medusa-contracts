@@ -41,4 +41,14 @@ contract OracleFactory is Ownable {
         emit NewOracleCreated(oracleId, address(oracle));
         return (oracleId, address(oracle));
     }
+
+    function pauseOracle(bytes32 _oracleId) public onlyOwner {
+        EncryptionOracle oracle = EncryptionOracle(oracles[_oracleId]);
+        oracle.pause();
+    }
+
+    function unpauseOracle(bytes32 _oracleId) public onlyOwner {
+        EncryptionOracle oracle = EncryptionOracle(oracles[_oracleId]);
+        oracle.unpause();
+    }
 }

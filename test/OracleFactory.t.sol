@@ -3,10 +3,11 @@ pragma solidity ^0.8.17;
 
 import "forge-std/Test.sol";
 import {OracleFactory, UnsupportedSuite} from "../src/OracleFactory.sol";
+import {EncryptionOracle} from "../src/EncryptionOracle.sol";
 import {Bn128} from "../src/Bn128.sol";
 
 contract OracleFactoryTest is Test {
-    OracleFactory factory;
+    OracleFactory private factory;
 
     function setUp() public {
         factory = new OracleFactory();
@@ -49,11 +50,55 @@ contract OracleFactoryTest is Test {
             mstore(add(freeMemoryPointer, 4), pubkey) // Append the "_distKey" argument (64 bytes).
             mstore(add(freeMemoryPointer, 68), unsupportedSuite) // Append the "_suite" argument (32 bytes).
 
-            success
+            // We use 0 because we are not sending any Ether.
             // We use 100 because the length of our calldata totals up like so: 4 + 64 + 32.
-            // We use 0 and 0 because we don't need to copy the return data into the scratch space.
-            := call(gas(), factoryAddress, 0, freeMemoryPointer, 100, 0, 0)
+            // We use 0 and 0 because we copy 0 return data into 0 scratch space.
+            success := call(gas(), factoryAddress, 0, freeMemoryPointer, 100, 0, 0)
         }
         assertFalse(success);
+    }
+
+    function testPauseOracle() public {
+        (bytes32 oracleId, address oracleAddress) =
+            factory.deployNewOracle(Bn128.g1Zero(), OracleFactory.Suite.BN254_KEYG1_HGAMAL);
+
+        assertFalse(EncryptionOracle(oracleAddress).paused());
+        factory.pauseOracle(oracleId);
+        assertTrue(EncryptionOracle(oracleAddress).paused());
+    }
+
+    function testCannotPauseOracleIfNotOwner() public {
+        (bytes32 oracleId, address oracleAddress) =
+            factory.deployNewOracle(Bn128.g1Zero(), OracleFactory.Suite.BN254_KEYG1_HGAMAL);
+
+        assertFalse(EncryptionOracle(oracleAddress).paused());
+        address notOwner = makeAddr("notOwner");
+        vm.expectRevert("Ownable: caller is not the owner");
+        hoax(notOwner);
+        factory.pauseOracle(oracleId);
+        assertFalse(EncryptionOracle(oracleAddress).paused());
+    }
+
+    function testUnpauseOracle() public {
+        (bytes32 oracleId, address oracleAddress) =
+            factory.deployNewOracle(Bn128.g1Zero(), OracleFactory.Suite.BN254_KEYG1_HGAMAL);
+
+        factory.pauseOracle(oracleId);
+        assertTrue(EncryptionOracle(oracleAddress).paused());
+        factory.unpauseOracle(oracleId);
+        assertFalse(EncryptionOracle(oracleAddress).paused());
+    }
+
+    function testCannotUnpauseOracleIfNotOwner() public {
+        (bytes32 oracleId, address oracleAddress) =
+            factory.deployNewOracle(Bn128.g1Zero(), OracleFactory.Suite.BN254_KEYG1_HGAMAL);
+
+        factory.pauseOracle(oracleId);
+        assertTrue(EncryptionOracle(oracleAddress).paused());
+        address notOwner = makeAddr("notOwner");
+        vm.expectRevert("Ownable: caller is not the owner");
+        hoax(notOwner);
+        factory.unpauseOracle(oracleId);
+        assertTrue(EncryptionOracle(oracleAddress).paused());
     }
 }
