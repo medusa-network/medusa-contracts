@@ -70,6 +70,8 @@ interface IDKG {
 /// The contract verifies the commitments and computes the public key based on valid commitments.
 /// @author Cryptonet
 contract DKG is ThresholdNetwork, IDKG {
+    using Bn128 for Bn128.G1Point;
+
     /// @notice The maximum number of participants
     uint16 public constant MAX_PARTICIPANTS = 1000;
 
@@ -217,7 +219,7 @@ contract DKG is ThresholdNetwork, IDKG {
         for (uint256 i = 0; i < len; i++) {
             // TODO save the addition of those if successful later
             //comms[i] = Bn128.g1Decompress(bytes32(_commitment[i]));
-            if (!Bn128.isG1PointOnCurve(_bundle.commitment[i])) {
+            if (!_bundle.commitment[i].isG1PointOnCurve()) {
                 revert InvalidCommitment(i);
             }
             //compressed[i] = uint256(Bn128.g1Compress(_commitment[i]));
@@ -227,7 +229,7 @@ contract DKG is ThresholdNetwork, IDKG {
         // TODO check it is not done before
         //deal_hashes[indexOfSender()] = uint256(comm);
         // 4. add the key to the aggregated key
-        distKey = Bn128.g1Add(distKey, _bundle.commitment[0]);
+        distKey = distKey.g1Add(_bundle.commitment[0]);
         // 5. emit event
         //emit DealBundleSubmitted(index, _bundle);
         emitDealBundle(index, _bundle);

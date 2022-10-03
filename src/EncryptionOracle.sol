@@ -20,6 +20,7 @@ interface IEncryptionOracle {
     }
 
     function requestReencryption(uint256 _cipherId, Bn128.G1Point memory _publickey) external returns (uint256);
+
     function submitCiphertext(Ciphertext memory _cipher) external returns (uint256);
 
     /// @notice Emitted when a new cipher text is registered with medusa
@@ -107,7 +108,7 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle {
             revert RequestDoesNotExist();
         }
         PendingRequest memory pr = pendingRequests[_requestId];
-        delete(pendingRequests[_requestId]);
+        delete pendingRequests[_requestId];
         IEncryptionClient client = IEncryptionClient(pr.client);
         try client.oracleResult(_requestId, _cipher) {
             return true;
