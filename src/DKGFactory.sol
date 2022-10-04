@@ -3,7 +3,6 @@ pragma solidity ^0.8.17;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {DKG} from "./DKG.sol";
-import {Bn128} from "./Bn128.sol";
 
 /// @title DKGFactory
 /// @author Cryptonet

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {Bn128} from "./Bn128.sol";
+import {Bn128, G1Point} from "./Bn128.sol";
 import {DKGFactory} from "./DKGFactory.sol";
 
 error InvalidPhase();
@@ -19,25 +19,26 @@ error InvalidCommitment(uint256 index);
 /// @dev All threshold networks have a distributed key;
 /// the DKG contract facilitates the generation of a key, whereas Oracle contracts are given a key
 abstract contract ThresholdNetwork {
-    Bn128.G1Point internal distKey;
+    G1Point internal distKey;
 
-    constructor(Bn128.G1Point memory _distKey) {
+    constructor(G1Point memory _distKey) {
         distKey = _distKey;
     }
 
-    function distributedKey() external view virtual returns (Bn128.G1Point memory) {
+    function distributedKey() external view virtual returns (G1Point memory) {
         return distKey;
     }
 }
 
-interface IDKG {
-    struct DealBundle {
-        Bn128.G1Point random;
-        uint32[] indices;
-        uint256[] encryptedShares;
-        Bn128.G1Point[] commitment;
-    }
+/// @notice A bundle of deals submitted by each participant.
+struct DealBundle {
+    G1Point random;
+    uint32[] indices;
+    uint256[] encryptedShares;
+    G1Point[] commitment;
+}
 
+interface IDKG {
     enum Phase {
         REGISTRATION,
         DEAL,
@@ -70,6 +71,8 @@ interface IDKG {
 /// The contract verifies the commitments and computes the public key based on valid commitments.
 /// @author Cryptonet
 contract DKG is ThresholdNetwork, IDKG {
+    using Bn128 for G1Point;
+
     /// @notice The maximum number of participants
     uint16 public constant MAX_PARTICIPANTS = 1000;
 
@@ -165,7 +168,7 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @dev Only authorized nodes from the factory can register
     /// @param _tmpKey The temporary key of the participant
     /// @custom:todo make it payable in a super contract
-    function registerParticipant(uint256 _tmpKey) public onlyAuthorized onlyPhase(Phase.REGISTRATION) {
+    function registerParticipant(uint256 _tmpKey) external onlyAuthorized onlyPhase(Phase.REGISTRATION) {
         if (nbRegistered >= MAX_PARTICIPANTS) {
             revert ParticipantLimit();
         }
@@ -196,7 +199,7 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @dev Can only be called by registered nodes while in the deal phase
     /// @param _bundle The deal bundle; a struct containing the random point, the indices of the nodes to which the shares are encrypted,
     /// the encrypted shares and the commitments to the shares
-    function submitDealBundle(DealBundle memory _bundle) public onlyRegistered onlyPhase(Phase.DEAL) {
+    function submitDealBundle(DealBundle calldata _bundle) external onlyRegistered onlyPhase(Phase.DEAL) {
         uint32 index = indexOfSender();
         // 1. Check he submitted enough encrypted shares
         // We expect the dealer to submit his own too.
@@ -217,7 +220,7 @@ contract DKG is ThresholdNetwork, IDKG {
         for (uint256 i = 0; i < len; i++) {
             // TODO save the addition of those if successful later
             //comms[i] = Bn128.g1Decompress(bytes32(_commitment[i]));
-            if (!Bn128.isG1PointOnCurve(_bundle.commitment[i])) {
+            if (!_bundle.commitment[i].isG1PointOnCurve()) {
                 revert InvalidCommitment(i);
             }
             //compressed[i] = uint256(Bn128.g1Compress(_commitment[i]));
@@ -227,7 +230,7 @@ contract DKG is ThresholdNetwork, IDKG {
         // TODO check it is not done before
         //deal_hashes[indexOfSender()] = uint256(comm);
         // 4. add the key to the aggregated key
-        distKey = Bn128.g1Add(distKey, _bundle.commitment[0]);
+        distKey = distKey.g1Add(_bundle.commitment[0]);
         // 5. emit event
         //emit DealBundleSubmitted(index, _bundle);
         emitDealBundle(index, _bundle);
@@ -241,7 +244,7 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @param _commitment The commitment of the complainer
     /// @param _deal The deal to complain against */
     /// @custom:todo Implement
-    function submitComplaintBundle() public onlyRegistered onlyPhase(Phase.COMPLAINT) {
+    function submitComplaintBundle() external onlyRegistered onlyPhase(Phase.COMPLAINT) {
         // TODO
         emit ValidComplaint(msg.sender, 0);
     }
@@ -255,7 +258,7 @@ contract DKG is ThresholdNetwork, IDKG {
         return nodeIndex;
     }
 
-    function distributedKey() public view override onlyPhase(Phase.DONE) returns (Bn128.G1Point memory) {
+    function distributedKey() public view override onlyPhase(Phase.DONE) returns (G1Point memory) {
         //return uint256(Bn128.g1Compress(distKey));
         return distKey;
     }

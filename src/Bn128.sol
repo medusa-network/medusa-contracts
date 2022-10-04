@@ -3,18 +3,19 @@
 // parts extracted/inspired from https://github.com/keep-network/keep-core/edit/main/solidity/random-beacon/contracts/libraries/AltBn128.sol
 pragma solidity ^0.8.17;
 
+// G1Point implements a point in G1 group.
+
+struct G1Point {
+    uint256 x;
+    uint256 y;
+}
+
 /// @title Operations on bn128
 /// @dev Implementations of common elliptic curve operations on Ethereum's
 ///      alt_bn128 curve. Whenever possible, use post-Byzantium
 ///      pre-compiled contracts to offset gas costs.
 library Bn128 {
     using ModUtils for uint256;
-    // G1Point implements a point in G1 group.
-
-    struct G1Point {
-        uint256 x;
-        uint256 y;
-    }
 
     // p is a prime over which we form a basic field
     // Taken from go-ethereum/crypto/bn256/cloudflare/constants.go

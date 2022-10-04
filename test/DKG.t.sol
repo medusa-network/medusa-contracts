@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import {
+    DealBundle,
     IDKG,
     DKG,
     NotAuthorized,
@@ -13,7 +14,7 @@ import {
     InvalidCommitmentsCount
 } from "../src/DKG.sol";
 import {DKGFactory} from "../src/DKGFactory.sol";
-import {Bn128} from "../src/Bn128.sol";
+import {Bn128, G1Point} from "../src/Bn128.sol";
 import "forge-std/Test.sol";
 
 contract DKGTest is Test {
@@ -25,11 +26,11 @@ contract DKGTest is Test {
         dkg = new DKG(factory);
     }
 
-    function emptyDealBundle() private pure returns (DKG.DealBundle memory) {
+    function emptyDealBundle() private pure returns (DealBundle memory) {
         uint32[] memory indicies;
         uint256[] memory encryptedShares;
-        Bn128.G1Point[] memory commitment;
-        return IDKG.DealBundle(Bn128.g1Zero(), indicies, encryptedShares, commitment);
+        G1Point[] memory commitment;
+        return DealBundle(Bn128.g1Zero(), indicies, encryptedShares, commitment);
     }
 
     function testRegister() public {
@@ -117,7 +118,7 @@ contract DKGTest is Test {
         vm.prank(nextParticipant);
         dkg.registerParticipant(1);
 
-        DKG.DealBundle memory bundle = emptyDealBundle();
+        DealBundle memory bundle = emptyDealBundle();
         bundle.encryptedShares = new uint256[](2); // bundle with 2 shares
 
         vm.roll(dkg.registrationTime());
@@ -132,7 +133,7 @@ contract DKGTest is Test {
         vm.prank(nextParticipant);
         dkg.registerParticipant(1);
 
-        DKG.DealBundle memory bundle = emptyDealBundle();
+        DealBundle memory bundle = emptyDealBundle();
         bundle.encryptedShares = new uint256[](1); // bundle with 1 share and 0 commitments
 
         vm.roll(dkg.registrationTime());

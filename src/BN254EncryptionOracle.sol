@@ -2,13 +2,13 @@
 pragma solidity ^0.8.17;
 
 import {EncryptionOracle} from "./EncryptionOracle.sol";
-import {OracleFactory} from "./OracleFactory.sol";
-import "./Bn128.sol";
+import {Suite} from "./OracleFactory.sol";
+import {G1Point} from "./Bn128.sol";
 
 contract BN254EncryptionOracle is EncryptionOracle {
-    constructor(Bn128.G1Point memory _distKey) EncryptionOracle(_distKey) {}
+    constructor(G1Point memory _distKey) EncryptionOracle(_distKey) {}
 
-    function suite() external pure override returns (OracleFactory.Suite) {
-        return OracleFactory.Suite.BN254_KEYG1_HGAMAL;
+    function suite() external pure override returns (Suite) {
+        return Suite.BN254_KEYG1_HGAMAL;
     }
 }
