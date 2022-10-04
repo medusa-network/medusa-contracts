@@ -29,7 +29,7 @@ contract OracleFactory is Ownable {
     /// @param _distKey The distributed key previously created by a DKG process
     /// @param _suite The encryption suite to use
     /// @return The id and address of the new oracle
-    function deployNewOracle(G1Point memory _distKey, Suite _suite) public onlyOwner returns (bytes32, address) {
+    function deployNewOracle(G1Point calldata _distKey, Suite _suite) external onlyOwner returns (bytes32, address) {
         EncryptionOracle oracle;
         if (_suite == Suite.BN254_KEYG1_HGAMAL) {
             oracle = new BN254EncryptionOracle(_distKey);

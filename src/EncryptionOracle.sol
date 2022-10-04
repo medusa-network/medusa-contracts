@@ -18,15 +18,15 @@ interface IEncryptionClient {
     /// @dev Implement in client contracts of medusa
     /// @param requestId The id of the original request
     /// @param _cipher the reencryption result
-    function oracleResult(uint256 requestId, Ciphertext memory _cipher) external;
+    function oracleResult(uint256 requestId, Ciphertext calldata _cipher) external;
 }
 
 interface IEncryptionOracle {
-    function requestReencryption(uint256 _cipherId, G1Point memory _publickey) external returns (uint256);
+    function requestReencryption(uint256 _cipherId, G1Point calldata _publickey) external returns (uint256);
 
     function submitCiphertext(Ciphertext calldata _cipher, bytes calldata _link) external returns (uint256);
 
-    function deliverReencryption(uint256 _requestId, Ciphertext memory _cipher) external returns (bool);
+    function deliverReencryption(uint256 _requestId, Ciphertext calldata _cipher) external returns (bool);
 
     /// @notice Emitted when a new cipher text is registered with medusa
     /// @dev Broadcasts the id, cipher text, and client or owner of the cipher text
@@ -105,7 +105,7 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     /// @param _publicKey the public key of the recipient
     /// @return the reencryption request id
     /// @custom:todo Payable; users pay for the medusa network somehow (oracle gas + platform fee)
-    function requestReencryption(uint256 _cipherId, G1Point memory _publicKey)
+    function requestReencryption(uint256 _cipherId, G1Point calldata _publicKey)
         external
         whenNotPaused
         returns (uint256)
@@ -122,7 +122,11 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     /// @param _requestId the pending request id; used to callback the correct client
     /// @param _cipher The reencryption result for the request
     /// @return true if the client callback succeeds, otherwise reverts with OracleResultFailed
-    function deliverReencryption(uint256 _requestId, Ciphertext memory _cipher) external whenNotPaused returns (bool) {
+    function deliverReencryption(uint256 _requestId, Ciphertext calldata _cipher)
+        external
+        whenNotPaused
+        returns (bool)
+    {
         /// @custom:todo We need to verify a threshold signature to verify the cipher result
         if (!requestExists(_requestId)) {
             revert RequestDoesNotExist();

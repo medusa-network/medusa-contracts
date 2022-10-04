@@ -29,7 +29,7 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
     // we can't differentiate otherwise
     event NewOracleResult(uint256 requestId, Ciphertext ciphertext);
 
-    function oracleResult(uint256 _requestId, Ciphertext memory _cipher) external {
+    function oracleResult(uint256 _requestId, Ciphertext calldata _cipher) external {
         require(msg.sender == address(oracle), "only oracle can submit results");
         // TODO : some checks ? do we handle pending requests here etc ?
         emit NewOracleResult(_requestId, _cipher);
@@ -61,8 +61,8 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
         require(false, "This can not be called - call grantRoleKey");
     }
 
-    function grantRoleKey(bytes32 _role, address _account, G1Point memory _pubkey)
-        public
+    function grantRoleKey(bytes32 _role, address _account, G1Point calldata _pubkey)
+        external
         onlyRole(getRoleAdmin(_role))
     {
         require(_pubkey.x != 0, "public key can't be 0");
