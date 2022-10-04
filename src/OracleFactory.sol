@@ -4,7 +4,11 @@ pragma solidity ^0.8.17;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
 import {EncryptionOracle} from "./EncryptionOracle.sol";
-import {Bn128} from "./Bn128.sol";
+import {G1Point} from "./Bn128.sol";
+
+/// @notice An enum of supported encryption suites
+/// @dev The format is CURVE_KEYGROUP_ENCRYPTION
+enum Suite {BN254_KEYG1_HGAMAL}
 
 error UnsupportedSuite();
 
@@ -20,14 +24,12 @@ contract OracleFactory is Ownable {
     /// @notice Emitted when a new oracle is deployed
     event NewOracleCreated(bytes32 id, address oracle);
 
-    enum Suite {BN254_KEYG1_HGAMAL}
-
     /// @notice Deploys a new oracle with the specified distributed key and encryption suite
     /// @dev Only the Factory owner can deploy a new oracle
     /// @param _distKey The distributed key previously created by a DKG process
     /// @param _suite The encryption suite to use
     /// @return The id and address of the new oracle
-    function deployNewOracle(Bn128.G1Point memory _distKey, Suite _suite) public onlyOwner returns (bytes32, address) {
+    function deployNewOracle(G1Point memory _distKey, Suite _suite) public onlyOwner returns (bytes32, address) {
         EncryptionOracle oracle;
         if (_suite == Suite.BN254_KEYG1_HGAMAL) {
             oracle = new BN254EncryptionOracle(_distKey);

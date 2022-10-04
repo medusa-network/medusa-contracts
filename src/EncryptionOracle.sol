@@ -4,24 +4,25 @@ pragma solidity ^0.8.17;
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ThresholdNetwork} from "./DKG.sol";
-import {Bn128} from "./Bn128.sol";
-import {OracleFactory} from "./OracleFactory.sol";
+import {Bn128, G1Point} from "./Bn128.sol";
+import {Suite} from "./OracleFactory.sol";
+
+/// @notice A 32-byte encrypted ciphertext
+struct Ciphertext {
+    G1Point random;
+    uint256 cipher;
+}
 
 interface IEncryptionClient {
     /// @notice Callback to client contract when medusa posts a result
     /// @dev Implement in client contracts of medusa
     /// @param requestId The id of the original request
     /// @param _cipher the reencryption result
-    function oracleResult(uint256 requestId, IEncryptionOracle.Ciphertext memory _cipher) external;
+    function oracleResult(uint256 requestId, Ciphertext memory _cipher) external;
 }
 
 interface IEncryptionOracle {
-    struct Ciphertext {
-        Bn128.G1Point random;
-        uint256 cipher;
-    }
-
-    function requestReencryption(uint256 _cipherId, Bn128.G1Point memory _publickey) external returns (uint256);
+    function requestReencryption(uint256 _cipherId, G1Point memory _publickey) external returns (uint256);
 
     function submitCiphertext(Ciphertext memory _cipher) external returns (uint256);
 
@@ -33,7 +34,7 @@ interface IEncryptionOracle {
 
     /// @notice Emitted when a new request is sent to medusa
     /// @dev Requests can be sent by clients that do not own the cipher text; must verify the request off-chain
-    event ReencryptionRequest(uint256 indexed cipherId, uint256 requestId, Bn128.G1Point publicKey, address client);
+    event ReencryptionRequest(uint256 indexed cipherId, uint256 requestId, G1Point publicKey, address client);
 }
 
 /// @notice Reverts when delivering a response for a non-existent request
@@ -49,7 +50,7 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     /// @notice All instance contracts must implement their own encryption suite
     /// @dev e.g. BN254_KEYG1_HGAMAL
     /// @return suite of curve + encryption params supported by this contract
-    function suite() external pure virtual returns (OracleFactory.Suite);
+    function suite() external pure virtual returns (Suite);
 
     /// @notice A pending reencryption request
     /// @dev client client's address to callback with a response
@@ -73,7 +74,7 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     /// @notice The public key corresponding to the distributed private key registered for this contract
     /// @dev This is passed in by the OracleFactory. Corresponds to an x-y point on an elliptic curve
     /// @param _distKey An x-y point representing a public key previously created by medusa nodes
-    constructor(Bn128.G1Point memory _distKey) ThresholdNetwork(_distKey) {}
+    constructor(G1Point memory _distKey) ThresholdNetwork(_distKey) {}
 
     function pause() external onlyOwner {
         _pause();
@@ -86,7 +87,7 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     /// @notice Submit a new ciphertext and emit an event
     /// @dev We only emit an event; no storage. We authorize future requests for this ciphertext off-chain.
     /// @return the id of the newly registered ciphertext
-    function submitCiphertext(IEncryptionOracle.Ciphertext memory _cipher) external whenNotPaused returns (uint256) {
+    function submitCiphertext(Ciphertext memory _cipher) external whenNotPaused returns (uint256) {
         uint256 id = newCipherId();
         emit NewCiphertext(id, _cipher, msg.sender);
         return id;
@@ -98,7 +99,7 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     /// @param _publicKey the public key of the recipient
     /// @return the reencryption request id
     /// @custom:todo Payable; users pay for the medusa network somehow (oracle gas + platform fee)
-    function requestReencryption(uint256 _cipherId, Bn128.G1Point memory _publicKey)
+    function requestReencryption(uint256 _cipherId, G1Point memory _publicKey)
         external
         whenNotPaused
         returns (uint256)
@@ -115,11 +116,7 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     /// @param _requestId the pending request id; used to callback the correct client
     /// @param _cipher The reencryption result for the request
     /// @return true if the client callback succeeds, otherwise reverts with OracleResultFailed
-    function deliverReencryption(uint256 _requestId, IEncryptionOracle.Ciphertext memory _cipher)
-        external
-        whenNotPaused
-        returns (bool)
-    {
+    function deliverReencryption(uint256 _requestId, Ciphertext memory _cipher) external whenNotPaused returns (bool) {
         /// @custom:todo We need to verify a threshold signature to verify the cipher result
         if (!requestExists(_requestId)) {
             revert RequestDoesNotExist();

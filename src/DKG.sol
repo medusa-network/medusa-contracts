@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {Bn128} from "./Bn128.sol";
+import {Bn128, G1Point} from "./Bn128.sol";
 import {DKGFactory} from "./DKGFactory.sol";
 
 error InvalidPhase();
@@ -19,25 +19,26 @@ error InvalidCommitment(uint256 index);
 /// @dev All threshold networks have a distributed key;
 /// the DKG contract facilitates the generation of a key, whereas Oracle contracts are given a key
 abstract contract ThresholdNetwork {
-    Bn128.G1Point internal distKey;
+    G1Point internal distKey;
 
-    constructor(Bn128.G1Point memory _distKey) {
+    constructor(G1Point memory _distKey) {
         distKey = _distKey;
     }
 
-    function distributedKey() external view virtual returns (Bn128.G1Point memory) {
+    function distributedKey() external view virtual returns (G1Point memory) {
         return distKey;
     }
 }
 
-interface IDKG {
-    struct DealBundle {
-        Bn128.G1Point random;
-        uint32[] indices;
-        uint256[] encryptedShares;
-        Bn128.G1Point[] commitment;
-    }
+/// @notice A bundle of deals submitted by each participant.
+struct DealBundle {
+    G1Point random;
+    uint32[] indices;
+    uint256[] encryptedShares;
+    G1Point[] commitment;
+}
 
+interface IDKG {
     enum Phase {
         REGISTRATION,
         DEAL,
@@ -70,7 +71,7 @@ interface IDKG {
 /// The contract verifies the commitments and computes the public key based on valid commitments.
 /// @author Cryptonet
 contract DKG is ThresholdNetwork, IDKG {
-    using Bn128 for Bn128.G1Point;
+    using Bn128 for G1Point;
 
     /// @notice The maximum number of participants
     uint16 public constant MAX_PARTICIPANTS = 1000;
@@ -257,7 +258,7 @@ contract DKG is ThresholdNetwork, IDKG {
         return nodeIndex;
     }
 
-    function distributedKey() public view override onlyPhase(Phase.DONE) returns (Bn128.G1Point memory) {
+    function distributedKey() public view override onlyPhase(Phase.DONE) returns (G1Point memory) {
         //return uint256(Bn128.g1Compress(distKey));
         return distKey;
     }

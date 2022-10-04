@@ -2,9 +2,9 @@
 pragma solidity ^0.8.17;
 
 import "forge-std/Test.sol";
-import {OracleFactory, UnsupportedSuite} from "../src/OracleFactory.sol";
+import {OracleFactory, Suite, UnsupportedSuite} from "../src/OracleFactory.sol";
 import {EncryptionOracle} from "../src/EncryptionOracle.sol";
-import {Bn128} from "../src/Bn128.sol";
+import {Bn128, G1Point} from "../src/Bn128.sol";
 
 contract OracleFactoryTest is Test {
     OracleFactory private factory;
@@ -14,12 +14,11 @@ contract OracleFactoryTest is Test {
     }
 
     function testDeployNewOracle() public {
-        (bytes32 oracleId, address oracleAddress) =
-            factory.deployNewOracle(Bn128.g1Zero(), OracleFactory.Suite.BN254_KEYG1_HGAMAL);
+        (bytes32 oracleId, address oracleAddress) = factory.deployNewOracle(Bn128.g1Zero(), Suite.BN254_KEYG1_HGAMAL);
         assertEq(factory.oracles(oracleId), oracleAddress);
 
         (bytes32 secondOracleId, address secondOracleAddress) =
-            factory.deployNewOracle(Bn128.g1Zero(), OracleFactory.Suite.BN254_KEYG1_HGAMAL);
+            factory.deployNewOracle(Bn128.g1Zero(), Suite.BN254_KEYG1_HGAMAL);
         assertEq(factory.oracles(secondOracleId), secondOracleAddress);
 
         assertFalse(oracleId == secondOracleId);
@@ -28,12 +27,12 @@ contract OracleFactoryTest is Test {
     function testCannotDeployNewOracle() public {
         vm.prank(address(uint160(12345)));
         vm.expectRevert("Ownable: caller is not the owner");
-        factory.deployNewOracle(Bn128.g1Zero(), OracleFactory.Suite.BN254_KEYG1_HGAMAL);
+        factory.deployNewOracle(Bn128.g1Zero(), Suite.BN254_KEYG1_HGAMAL);
     }
 
     function testCannotDeployNewOracleIfUnsupportedSuite() public {
         bytes4 deployNewOracleSelector = factory.deployNewOracle.selector;
-        Bn128.G1Point memory pubkey = Bn128.g1Zero();
+        G1Point memory pubkey = Bn128.g1Zero();
         uint256 unsupportedSuite = 1;
         address factoryAddress = address(factory);
 
@@ -59,8 +58,7 @@ contract OracleFactoryTest is Test {
     }
 
     function testPauseOracle() public {
-        (bytes32 oracleId, address oracleAddress) =
-            factory.deployNewOracle(Bn128.g1Zero(), OracleFactory.Suite.BN254_KEYG1_HGAMAL);
+        (bytes32 oracleId, address oracleAddress) = factory.deployNewOracle(Bn128.g1Zero(), Suite.BN254_KEYG1_HGAMAL);
 
         assertFalse(EncryptionOracle(oracleAddress).paused());
         factory.pauseOracle(oracleId);
@@ -68,8 +66,7 @@ contract OracleFactoryTest is Test {
     }
 
     function testCannotPauseOracleIfNotOwner() public {
-        (bytes32 oracleId, address oracleAddress) =
-            factory.deployNewOracle(Bn128.g1Zero(), OracleFactory.Suite.BN254_KEYG1_HGAMAL);
+        (bytes32 oracleId, address oracleAddress) = factory.deployNewOracle(Bn128.g1Zero(), Suite.BN254_KEYG1_HGAMAL);
 
         assertFalse(EncryptionOracle(oracleAddress).paused());
         address notOwner = makeAddr("notOwner");
@@ -80,8 +77,7 @@ contract OracleFactoryTest is Test {
     }
 
     function testUnpauseOracle() public {
-        (bytes32 oracleId, address oracleAddress) =
-            factory.deployNewOracle(Bn128.g1Zero(), OracleFactory.Suite.BN254_KEYG1_HGAMAL);
+        (bytes32 oracleId, address oracleAddress) = factory.deployNewOracle(Bn128.g1Zero(), Suite.BN254_KEYG1_HGAMAL);
 
         factory.pauseOracle(oracleId);
         assertTrue(EncryptionOracle(oracleAddress).paused());
@@ -90,8 +86,7 @@ contract OracleFactoryTest is Test {
     }
 
     function testCannotUnpauseOracleIfNotOwner() public {
-        (bytes32 oracleId, address oracleAddress) =
-            factory.deployNewOracle(Bn128.g1Zero(), OracleFactory.Suite.BN254_KEYG1_HGAMAL);
+        (bytes32 oracleId, address oracleAddress) = factory.deployNewOracle(Bn128.g1Zero(), Suite.BN254_KEYG1_HGAMAL);
 
         factory.pauseOracle(oracleId);
         assertTrue(EncryptionOracle(oracleAddress).paused());

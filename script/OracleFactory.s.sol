@@ -2,7 +2,8 @@
 pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
-import "../src/OracleFactory.sol";
+import {OracleFactory, Suite} from "../src/OracleFactory.sol";
+import {G1Point} from "../src/Bn128.sol";
 import "forge-std/console2.sol";
 
 contract OracleFactoryDeploy is Script {
@@ -13,13 +14,10 @@ contract OracleFactoryDeploy is Script {
         uint256 keyX = vm.envUint("DISTRIBUTED_KEY_X");
         uint256 keyY = vm.envUint("DISTRIBUTED_KEY_Y");
 
-        Bn128.G1Point memory key = Bn128.G1Point(keyX, keyY);
+        G1Point memory key = G1Point(keyX, keyY);
 
         OracleFactory factory = new OracleFactory();
-        (bytes32 oracleId, address oracleAddress) = factory.deployNewOracle(
-            key,
-            OracleFactory.Suite.BN254_KEYG1_HGAMAL
-        );
+        (bytes32 oracleId, address oracleAddress) = factory.deployNewOracle(key, Suite.BN254_KEYG1_HGAMAL);
         vm.stopBroadcast();
 
         console2.log("Oracle Factory:", address(factory));
