@@ -18,7 +18,7 @@ contract RoleACLTest is Test {
         RoleACL acl = new RoleACL(address(oracle));
         G1Point memory key = G1Point(1, 2);
         Ciphertext memory c = Ciphertext(key, 3);
-        uint256 id = acl.submitCiphertext(c);
+        uint256 id = acl.submitCiphertext(c, "dummylink");
         address bob = address(0x02);
         acl.grantRoleKey(acl.READER_ROLE(), bob, key);
         vm.prank(bob);

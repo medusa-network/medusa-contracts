@@ -38,7 +38,7 @@ contract MockEncryptionClient is IEncryptionClient {
 contract EncryptionOracleTest is Test {
     MockEncryptionOracle oracle;
 
-    event NewCiphertext(uint256 indexed id, Ciphertext ciphertext, address client);
+    event NewCiphertext(uint256 indexed id, Ciphertext ciphertext, bytes link, address client);
     event ReencryptionRequest(uint256 indexed cipherId, uint256 requestId, G1Point publicKey, address client);
 
     function setUp() public {
@@ -91,11 +91,11 @@ contract EncryptionOracleTest is Test {
     function testSubmitCipherText() public {
         Ciphertext memory cipher = dummyCiphertext();
         vm.expectEmit(true, false, false, true);
-        emit NewCiphertext(1, cipher, address(this));
-        uint256 cipherId = oracle.submitCiphertext(cipher);
+        emit NewCiphertext(1, cipher, "dummyLink", address(this));
+        uint256 cipherId = oracle.submitCiphertext(cipher, "dummyLink");
         assertEq(cipherId, 1);
 
-        cipherId = oracle.submitCiphertext(cipher);
+        cipherId = oracle.submitCiphertext(cipher, "otherDummyLink");
         assertEq(cipherId, 2);
     }
 

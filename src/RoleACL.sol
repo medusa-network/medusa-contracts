@@ -36,8 +36,12 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
     }
 
     // TODO add different roles, payable etc
-    function submitCiphertext(Ciphertext memory _cipher) public onlyRole(WRITER_ROLE) returns (uint256) {
-        return oracle.submitCiphertext(_cipher);
+    function submitCiphertext(Ciphertext calldata _cipher, bytes calldata _link)
+        public
+        onlyRole(WRITER_ROLE)
+        returns (uint256)
+    {
+        return oracle.submitCiphertext(_cipher, _link);
     }
 
     function askForDecryption(uint256 _id) external {

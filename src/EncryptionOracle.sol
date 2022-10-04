@@ -24,13 +24,13 @@ interface IEncryptionClient {
 interface IEncryptionOracle {
     function requestReencryption(uint256 _cipherId, G1Point memory _publickey) external returns (uint256);
 
-    function submitCiphertext(Ciphertext memory _cipher) external returns (uint256);
+    function submitCiphertext(Ciphertext calldata _cipher, bytes calldata _link) external returns (uint256);
 
     function deliverReencryption(uint256 _requestId, Ciphertext memory _cipher) external returns (bool);
 
     /// @notice Emitted when a new cipher text is registered with medusa
     /// @dev Broadcasts the id, cipher text, and client or owner of the cipher text
-    event NewCiphertext(uint256 indexed id, Ciphertext ciphertext, address client);
+    event NewCiphertext(uint256 indexed id, Ciphertext ciphertext, bytes link, address client);
 
     /// @notice Emitted when a new request is sent to medusa
     /// @dev Requests can be sent by clients that do not own the cipher text; must verify the request off-chain
@@ -86,10 +86,16 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
 
     /// @notice Submit a new ciphertext and emit an event
     /// @dev We only emit an event; no storage. We authorize future requests for this ciphertext off-chain.
+    /// @param _cipher The ciphertext of an encrypted key
+    /// @param _link The link to the encrypted contents
     /// @return the id of the newly registered ciphertext
-    function submitCiphertext(Ciphertext memory _cipher) external whenNotPaused returns (uint256) {
+    function submitCiphertext(Ciphertext calldata _cipher, bytes calldata _link)
+        external
+        whenNotPaused
+        returns (uint256)
+    {
         uint256 id = newCipherId();
-        emit NewCiphertext(id, _cipher, msg.sender);
+        emit NewCiphertext(id, _cipher, _link, msg.sender);
         return id;
     }
 
