@@ -11,11 +11,10 @@ contract DKGFactoryDeploy is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         DKGFactory factory = new DKGFactory();
-        (bytes32 dkgId, address dkgAddress) = factory.deployNewDKG();
+        address dkgAddress = factory.deployNewDKG();
 
         vm.stopBroadcast();
         console2.log("DKG Factory:", address(factory));
-        console2.log("DKG ID:", uint256(dkgId));
         console2.log("DKG Address:", dkgAddress);
     }
 }

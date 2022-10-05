@@ -13,13 +13,13 @@ contract DKGFactoryTest is Test {
     }
 
     function testDeployNewDKG() public {
-        (bytes32 dkgId, address dkgAddress) = factory.deployNewDKG();
-        assertEq(factory.dkgAddresses(dkgId), dkgAddress);
+        address dkgAddress = factory.deployNewDKG();
+        assertEq(factory.dkgAddresses(dkgAddress), true);
 
-        (bytes32 secondDKGId, address secondDKGAddress) = factory.deployNewDKG();
-        assertEq(factory.dkgAddresses(secondDKGId), secondDKGAddress);
+        address secondDKGAddress = factory.deployNewDKG();
+        assertEq(factory.dkgAddresses(secondDKGAddress), true);
 
-        assertFalse(dkgId == secondDKGId);
+        assertFalse(dkgAddress == secondDKGAddress);
     }
 
     function testCannotDeployNewDKGIfNotOwner() public {
