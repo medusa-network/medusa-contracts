@@ -177,11 +177,7 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @dev Only authorized nodes from the factory can register
     /// @param _tmpKey The temporary key of the participant
     /// @custom:todo make it payable in a super contract
-    function registerParticipant(uint256 _tmpKey)
-        external
-        onlyAuthorized
-        onlyPhase(Phase.REGISTRATION)
-    {
+    function registerParticipant(uint256 _tmpKey) external onlyAuthorized onlyPhase(Phase.REGISTRATION) {
         if (nbRegistered >= MAX_PARTICIPANTS) {
             revert ParticipantLimit();
         }
@@ -212,11 +208,7 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @dev Can only be called by registered nodes while in the deal phase
     /// @param _bundle The deal bundle; a struct containing the random point, the indices of the nodes to which the shares are encrypted,
     /// the encrypted shares and the commitments to the shares
-    function submitDealBundle(DealBundle calldata _bundle)
-        external
-        onlyRegistered
-        onlyPhase(Phase.DEAL)
-    {
+    function submitDealBundle(DealBundle calldata _bundle) external onlyRegistered onlyPhase(Phase.DEAL) {
         uint32 index = indexOfSender();
         // 1. Check he submitted enough encrypted shares
         // We expect the dealer to submit his own too.
@@ -261,11 +253,7 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @param _commitment The commitment of the complainer
     /// @param _deal The deal to complain against */
     /// @custom:todo Implement
-    function submitComplaintBundle()
-        external
-        onlyRegistered
-        onlyPhase(Phase.COMPLAINT)
-    {
+    function submitComplaintBundle() external onlyRegistered onlyPhase(Phase.COMPLAINT) {
         // TODO
         emit ValidComplaint(msg.sender, 0);
     }
@@ -275,22 +263,11 @@ contract DKG is ThresholdNetwork, IDKG {
     }
 
     // Returns the list of indexes of QUALIFIED participants at the end of the DKG.
-    function participantIndexes()
-        public
-        view
-        onlyPhase(Phase.DONE)
-        returns (uint32[] memory)
-    {
+    function participantIndexes() public view onlyPhase(Phase.DONE) returns (uint32[] memory) {
         return nodeIndex;
     }
 
-    function distributedKey()
-        public
-        view
-        override
-        onlyPhase(Phase.DONE)
-        returns (G1Point memory)
-    {
+    function distributedKey() public view override onlyPhase(Phase.DONE) returns (G1Point memory) {
         //return uint256(Bn128.g1Compress(distKey));
         return distKey;
     }

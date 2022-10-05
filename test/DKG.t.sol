@@ -1,7 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {DealBundle, Deal, IDKG, DKG, NotAuthorized, NotRegistered, AlreadyRegistered, ParticipantLimit, InvalidPhase, InvalidDealsCount, InvalidCommitmentsCount} from "../src/DKG.sol";
+import {
+    DealBundle,
+    Deal,
+    IDKG,
+    DKG,
+    NotAuthorized,
+    NotRegistered,
+    AlreadyRegistered,
+    ParticipantLimit,
+    InvalidPhase,
+    InvalidDealsCount,
+    InvalidCommitmentsCount
+} from "../src/DKG.sol";
 import {DKGFactory} from "../src/DKGFactory.sol";
 import {Bn128, G1Point} from "../src/Bn128.sol";
 import "forge-std/Test.sol";
