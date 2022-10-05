@@ -1,18 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {
-    DealBundle,
-    IDKG,
-    DKG,
-    NotAuthorized,
-    NotRegistered,
-    AlreadyRegistered,
-    ParticipantLimit,
-    InvalidPhase,
-    InvalidSharesCount,
-    InvalidCommitmentsCount
-} from "../src/DKG.sol";
+import {DealBundle, Deal, IDKG, DKG, NotAuthorized, NotRegistered, AlreadyRegistered, ParticipantLimit, InvalidPhase, InvalidDealsCount, InvalidCommitmentsCount} from "../src/DKG.sol";
 import {DKGFactory} from "../src/DKGFactory.sol";
 import {Bn128, G1Point} from "../src/Bn128.sol";
 import "forge-std/Test.sol";
@@ -27,10 +16,9 @@ contract DKGTest is Test {
     }
 
     function emptyDealBundle() private pure returns (DealBundle memory) {
-        uint32[] memory indicies;
-        uint256[] memory encryptedShares;
+        Deal[] memory deals;
         G1Point[] memory commitment;
-        return DealBundle(Bn128.g1Zero(), indicies, encryptedShares, commitment);
+        return DealBundle(Bn128.g1Zero(), deals, commitment);
     }
 
     function testRegister() public {
@@ -112,18 +100,18 @@ contract DKGTest is Test {
         dkg.submitDealBundle(emptyDealBundle());
     }
 
-    function testCannotSubmitDealBundleWithInvalidSharesCount() public {
+    function testCannotSubmitDealBundleWithInvalidDealCount() public {
         address nextParticipant = address(uint160(1));
         factory.addAuthorizedNode(nextParticipant);
         vm.prank(nextParticipant);
         dkg.registerParticipant(1);
 
         DealBundle memory bundle = emptyDealBundle();
-        bundle.encryptedShares = new uint256[](2); // bundle with 2 shares
+        bundle.deals = new Deal[](2); // bundle with 2 shares
 
         vm.roll(dkg.registrationTime());
         vm.prank(nextParticipant);
-        vm.expectRevert(InvalidSharesCount.selector);
+        vm.expectRevert(InvalidDealsCount.selector);
         dkg.submitDealBundle(bundle);
     }
 
@@ -134,7 +122,7 @@ contract DKGTest is Test {
         dkg.registerParticipant(1);
 
         DealBundle memory bundle = emptyDealBundle();
-        bundle.encryptedShares = new uint256[](1); // bundle with 1 share and 0 commitments
+        bundle.deals = new Deal[](1); // bundle with 1 share and 0 commitments
 
         vm.roll(dkg.registrationTime());
         vm.prank(nextParticipant);
