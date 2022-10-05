@@ -17,10 +17,7 @@ contract OracleFactoryDeploy is Script {
         G1Point memory key = G1Point(keyX, keyY);
 
         OracleFactory factory = new OracleFactory();
-        address oracleAddress = factory.deployNewOracle(
-            key,
-            Suite.BN254_KEYG1_HGAMAL
-        );
+        address oracleAddress = factory.deployNewOracle(key, Suite.BN254_KEYG1_HGAMAL);
         vm.stopBroadcast();
 
         console2.log("Oracle Factory:", address(factory));

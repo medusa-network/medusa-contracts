@@ -8,9 +8,7 @@ import {G1Point} from "./Bn128.sol";
 
 /// @notice An enum of supported encryption suites
 /// @dev The format is CURVE_KEYGROUP_ENCRYPTION
-enum Suite {
-    BN254_KEYG1_HGAMAL
-}
+enum Suite {BN254_KEYG1_HGAMAL}
 
 error UnsupportedSuite();
 
@@ -31,11 +29,7 @@ contract OracleFactory is Ownable {
     /// @param _distKey The distributed key previously created by a DKG process
     /// @param _suite The encryption suite to use
     /// @return The id and address of the new oracle
-    function deployNewOracle(G1Point calldata _distKey, Suite _suite)
-        external
-        onlyOwner
-        returns (address)
-    {
+    function deployNewOracle(G1Point calldata _distKey, Suite _suite) external onlyOwner returns (address) {
         EncryptionOracle oracle;
         if (_suite == Suite.BN254_KEYG1_HGAMAL) {
             oracle = new BN254EncryptionOracle(_distKey);

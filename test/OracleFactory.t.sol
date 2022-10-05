@@ -17,8 +17,7 @@ contract OracleFactoryTest is Test {
         address oracleAddress = factory.deployNewOracle(Bn128.g1Zero(), Suite.BN254_KEYG1_HGAMAL);
         assertEq(factory.oracles(oracleAddress), true);
 
-        address secondOracleAddress =
-            factory.deployNewOracle(Bn128.g1Zero(), Suite.BN254_KEYG1_HGAMAL);
+        address secondOracleAddress = factory.deployNewOracle(Bn128.g1Zero(), Suite.BN254_KEYG1_HGAMAL);
         assertEq(factory.oracles(secondOracleAddress), true);
 
         assertFalse(oracleAddress == secondOracleAddress);
