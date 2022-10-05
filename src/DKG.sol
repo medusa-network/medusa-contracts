@@ -43,7 +43,7 @@ struct DealBundle {
 
 /// @notice A deal for the node at this particular index.
 struct Deal {
-    uint32 indices;
+    uint32 index;
     uint256 encryptedShare;
 }
 
