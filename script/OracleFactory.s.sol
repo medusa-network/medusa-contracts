@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import "forge-std/Script.sol";
-import {OracleFactory, Suite} from "../src/OracleFactory.sol";
+import {OracleFactory} from "../src/OracleFactory.sol";
 import {G1Point} from "../src/Bn128.sol";
 import "forge-std/console2.sol";
 
@@ -17,7 +17,7 @@ contract OracleFactoryDeploy is Script {
         G1Point memory key = G1Point(keyX, keyY);
 
         OracleFactory factory = new OracleFactory();
-        address oracleAddress = factory.deployNewOracle(key, Suite.BN254_KEYG1_HGAMAL);
+        address oracleAddress = factory.deployReencryption_BN254_G1_HGAMAL(key);
         vm.stopBroadcast();
 
         console2.log("Oracle Factory:", address(factory));

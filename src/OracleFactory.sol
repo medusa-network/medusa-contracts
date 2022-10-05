@@ -6,12 +6,6 @@ import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
 import {EncryptionOracle} from "./EncryptionOracle.sol";
 import {G1Point} from "./Bn128.sol";
 
-/// @notice An enum of supported encryption suites
-/// @dev The format is CURVE_KEYGROUP_ENCRYPTION
-enum Suite {BN254_KEYG1_HGAMAL}
-
-error UnsupportedSuite();
-
 /// @title OracleFactory
 /// @author Cryptonet
 /// @notice Factory contract for creating encryption oracles
@@ -22,24 +16,19 @@ contract OracleFactory is Ownable {
     mapping(address => bool) public oracles;
 
     /// @notice Emitted when a new oracle is deployed
-    event NewOracleCreated(address oracle);
+    event NewReencryption_BN254_G1_HGAMAL(address oracle);
 
     /// @notice Deploys a new oracle with the specified distributed key and encryption suite
     /// @dev Only the Factory owner can deploy a new oracle
     /// @param _distKey The distributed key previously created by a DKG process
-    /// @param _suite The encryption suite to use
     /// @return The id and address of the new oracle
-    function deployNewOracle(G1Point calldata _distKey, Suite _suite) external onlyOwner returns (address) {
+    function deployReencryption_BN254_G1_HGAMAL(G1Point calldata _distKey) external onlyOwner returns (address) {
         EncryptionOracle oracle;
-        if (_suite == Suite.BN254_KEYG1_HGAMAL) {
-            oracle = new BN254EncryptionOracle(_distKey);
-        } else {
-            revert UnsupportedSuite();
-        }
+        oracle = new BN254EncryptionOracle(_distKey);
 
         oracles[address(oracle)] = true;
 
-        emit NewOracleCreated(address(oracle));
+        emit NewReencryption_BN254_G1_HGAMAL(address(oracle));
         return address(oracle);
     }
 

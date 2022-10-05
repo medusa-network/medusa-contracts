@@ -5,7 +5,6 @@ import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ThresholdNetwork} from "./DKG.sol";
 import {Bn128, G1Point} from "./Bn128.sol";
-import {Suite} from "./OracleFactory.sol";
 
 /// @notice A 32-byte encrypted ciphertext
 struct Ciphertext {
@@ -47,11 +46,6 @@ error OracleResultFailed(string errorMsg);
 /// @notice You must implement your encryption suite when inheriting from this contract
 /// @dev DOES NOT currently validate reencryption results OR implement fees for the medusa oracle network
 abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownable, Pausable {
-    /// @notice All instance contracts must implement their own encryption suite
-    /// @dev e.g. BN254_KEYG1_HGAMAL
-    /// @return suite of curve + encryption params supported by this contract
-    function suite() external pure virtual returns (Suite);
-
     /// @notice A pending reencryption request
     /// @dev client client's address to callback with a response
     struct PendingRequest {
