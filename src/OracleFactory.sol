@@ -8,7 +8,9 @@ import {G1Point} from "./Bn128.sol";
 
 /// @notice An enum of supported encryption suites
 /// @dev The format is CURVE_KEYGROUP_ENCRYPTION
-enum Suite {BN254_KEYG1_HGAMAL}
+enum Suite {
+    BN254_KEYG1_HGAMAL
+}
 
 error UnsupportedSuite();
 
@@ -18,18 +20,22 @@ error UnsupportedSuite();
 /// @dev Deploys new oracles with a specified distributed key and encryption suite
 /// @dev The factory contract is the owner of all oracles it deploys
 contract OracleFactory is Ownable {
-    /// @notice Mapping from oracle ID to oracle address
-    mapping(bytes32 => address) public oracles;
+    /// @notice List of running oracles
+    mapping(address => bool) public oracles;
 
     /// @notice Emitted when a new oracle is deployed
-    event NewOracleCreated(bytes32 id, address oracle);
+    event NewOracleCreated(address oracle);
 
     /// @notice Deploys a new oracle with the specified distributed key and encryption suite
     /// @dev Only the Factory owner can deploy a new oracle
     /// @param _distKey The distributed key previously created by a DKG process
     /// @param _suite The encryption suite to use
     /// @return The id and address of the new oracle
-    function deployNewOracle(G1Point calldata _distKey, Suite _suite) external onlyOwner returns (bytes32, address) {
+    function deployNewOracle(G1Point calldata _distKey, Suite _suite)
+        external
+        onlyOwner
+        returns (address)
+    {
         EncryptionOracle oracle;
         if (_suite == Suite.BN254_KEYG1_HGAMAL) {
             oracle = new BN254EncryptionOracle(_distKey);
@@ -37,20 +43,21 @@ contract OracleFactory is Ownable {
             revert UnsupportedSuite();
         }
 
-        bytes32 oracleId = keccak256(abi.encode(block.chainid, address(oracle)));
-        oracles[oracleId] = address(oracle);
+        oracles[address(oracle)] = true;
 
-        emit NewOracleCreated(oracleId, address(oracle));
-        return (oracleId, address(oracle));
+        emit NewOracleCreated(address(oracle));
+        return address(oracle);
     }
 
-    function pauseOracle(bytes32 _oracleId) public onlyOwner {
-        EncryptionOracle oracle = EncryptionOracle(oracles[_oracleId]);
+    function pauseOracle(address _oracle) public onlyOwner {
+        require(oracles[_oracle], "no oracle at this address registered");
+        EncryptionOracle oracle = EncryptionOracle(_oracle);
         oracle.pause();
     }
 
-    function unpauseOracle(bytes32 _oracleId) public onlyOwner {
-        EncryptionOracle oracle = EncryptionOracle(oracles[_oracleId]);
+    function unpauseOracle(address _oracle) public onlyOwner {
+        require(oracles[_oracle], "no oracle at this address registered");
+        EncryptionOracle oracle = EncryptionOracle(_oracle);
         oracle.unpause();
     }
 }
