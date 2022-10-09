@@ -32,7 +32,7 @@ contract OracleFactory is Ownable {
 
         oracles[address(oracle)] = true;
 
-        emit NewOracleDeployed(address(oracle), BN254_KG1_HGAMAL);
+        emit NewOracleDeployed(address(oracle), Suite.BN254_KEYG1_HGAMAL);
         return address(oracle);
     }
 

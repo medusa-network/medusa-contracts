@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Suite} from "./OracleFactory.sol";
 import {ThresholdNetwork} from "./DKG.sol";
 import {Bn128, G1Point} from "./Bn128.sol";
 
@@ -26,6 +27,11 @@ interface IEncryptionOracle {
     function submitCiphertext(Ciphertext calldata _cipher, bytes calldata _link) external returns (uint256);
 
     function deliverReencryption(uint256 _requestId, Ciphertext calldata _cipher) external returns (bool);
+
+    /// @notice All instance contracts must implement their own encryption suite
+    /// @dev e.g. BN254_KEYG1_HGAMAL
+    /// @return suite of curve + encryption params supported by this contract
+    function suite() external pure virtual returns (Suite);
 
     /// @notice Emitted when a new cipher text is registered with medusa
     /// @dev Broadcasts the id, cipher text, and client or owner of the cipher text

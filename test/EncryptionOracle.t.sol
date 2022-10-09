@@ -10,10 +10,15 @@ import {
     RequestDoesNotExist,
     OracleResultFailed
 } from "../src/EncryptionOracle.sol";
+import {Suite} from "../src/OracleFactory.sol";
 import {G1Point} from "../src/Bn128.sol";
 
 contract MockEncryptionOracle is EncryptionOracle {
     constructor(G1Point memory _distKey) EncryptionOracle(_distKey) {}
+
+    function suite() external pure override returns (Suite) {
+        return Suite.BN254_KEYG1_HGAMAL;
+    }
 }
 
 contract MockEncryptionClient is IEncryptionClient {
