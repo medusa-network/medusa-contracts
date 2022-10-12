@@ -3,4 +3,4 @@ out/
 .vscode/
 
 .env
-broadcast
+broadcast/**/31337/
