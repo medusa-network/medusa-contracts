@@ -14,11 +14,45 @@ clean  :; forge clean
 snapshot :; forge snapshot
 fmt    :; forge fmt
 
-# Deploy
-local_deploy_dkgfactory           :; forge script script/DKGFactory.s.sol:DKGFactoryDeploy --fork-url http://localhost:8545 --broadcast --verify -vvvv
-arbitrum_rinkeby_deploy_dkgfactory:; forge script script/DKGFactory.s.sol:DKGFactoryDeploy --rpc-url $ARBITRUM_RINKEBY_RPC_URL --broadcast --verify -vvvv
-goerli_deploy_dkgfactory          :; forge script script/DKGFactory.s.sol:DKGFactoryDeploy --rpc-url $GOERLI_RPC_URL --broadcast --verify -vvvv
+# --- Deploy ---
+#  First deploy the factories
+local_deploy_dkgfactory           :; forge script script/DeployDKGFactory.s.sol:DeployDKGFactory --fork-url http://localhost:8545 --broadcast --verify -vvvv
+arbitrum_rinkeby_deploy_dkgfactory:; forge script script/DeployDKGFactory.s.sol:DeployDKGFactory --rpc-url $ARBITRUM_RINKEBY_RPC_URL --broadcast --verify -vvvv
+goerli_deploy_dkgfactory          :; forge script script/DeployDKGFactory.s.sol:DeployDKGFactory --rpc-url $GOERLI_RPC_URL --broadcast --verify -vvvv
 
-local_deploy_oraclefactory           :; forge script script/OracleFactory.s.sol:OracleFactoryDeploy --fork-url http://localhost:8545 --broadcast --verify -vvvv
-arbitrum_rinkeby_deploy_oraclefactory:; forge script script/OracleFactory.s.sol:OracleFactoryDeploy --rpc-url $ARBITRUM_RINKEBY_RPC_URL --broadcast --verify -vvvv
-goerli_deploy_dkgfactory             :; forge script script/OracleFactory.s.sol:OracleFactoryDeploy --rpc-url $GOERLI_RPC_URL --broadcast --verify -vvvv
+local_deploy_oraclefactory           :; forge script script/DeployOracleFactory.s.sol:DeployOracleFactory --fork-url http://localhost:8545 --broadcast --verify -vvvv
+arbitrum_rinkeby_deploy_oraclefactory:; forge script script/DeployOracleFactory.s.sol:DeployOracleFactory --rpc-url $ARBITRUM_RINKEBY_RPC_URL --broadcast --verify -vvvv
+goerli_deploy_dkgfactory             :; forge script script/DeployOracleFactory.s.sol:DeployOracleFactory --rpc-url $GOERLI_RPC_URL --broadcast --verify -vvvv
+
+# Then add authorized nodes
+local_add_authorized_nodes:; forge script script/AddAuthorizedNodes.s.sol:AddAuthorizedNodes --fork-url http://localhost:8545 --broadcast --verify -vvvv
+
+# Then deploy a DKG
+local_deploy_dkg:; forge script script/DeployDKGInstance.s.sol:DeployDKGInstance --fork-url http://localhost:8545 --broadcast --verify -vvvv
+
+# Then deploy an Oracle with the key created from the DKG
+local_deploy_oracle:; forge script script/DeployBN254EncryptionOracle.s.sol:DeployBN254EncryptionOracle --fork-url http://localhost:8545 --broadcast --verify -vvvv
+
+
+# --- Contract Calls ---
+# Send ether to dead account to progress anvil blockchain
+create_block:; cast send 0x000000000000000000000000000000000000dEaD \
+				--value 0.1ether \
+				--private-key ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+
+# Get the distributed key from the completed DKG
+get_key:; cast call 0xa16E02E87b7454126E5E10d957A927A7F5B5d2be \
+			"distributedKey()(uint256,uint256)"
+
+# Submit Ciphertext
+submit_ciphertext:; cast send 0xCafac3dD18aC6c6e92c921884f9E4176737C052c \
+						"submitCiphertext(((uint256, uint256), uint256), bytes)(uint256)" \
+						"((0,0),0)" 0x00000000000000000000000000000000 \
+						--private-key ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 
+
+# Request Reencryption
+request_reencryption:; cast send 0xCafac3dD18aC6c6e92c921884f9E4176737C052c \
+						"requestReencryption(uint256,(uint256, uint256))(uint256)" \
+						1 "(0,0)" \
+						--private-key 59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
+
