@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import {Bn128, G1Point} from "./Bn128.sol";
 import {DKGFactory} from "./DKGFactory.sol";
+import {ArbSys, ARBITRUM_ONE, ARBITRUM_GOERLI} from "./ArbSys.sol";
 
 error InvalidPhase();
 error ParticipantLimit();
@@ -141,7 +142,7 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @notice Create a new DKG with an empty public key
     /// @dev The public key is aggregated in "real time" for each new deal or new valid complaint transaction
     constructor(DKGFactory _factory) ThresholdNetwork(Bn128.g1Zero()) {
-        initTime = block.number;
+        initTime = blockNumber();
         registrationTime = initTime + BLOCKS_PER_PHASE;
         dealTime = registrationTime + BLOCKS_PER_PHASE;
         complaintTime = dealTime + BLOCKS_PER_PHASE;
@@ -149,19 +150,23 @@ contract DKG is ThresholdNetwork, IDKG {
     }
 
     function isInRegistrationPhase() public view returns (bool) {
-        return block.number >= initTime && block.number < registrationTime;
+        uint256 blockNum = blockNumber();
+        return blockNum >= initTime && blockNum < registrationTime;
     }
 
     function isInDealPhase() public view returns (bool) {
-        return block.number >= registrationTime && block.number < dealTime;
+        uint256 blockNum = blockNumber();
+        return blockNum >= registrationTime && blockNum < dealTime;
     }
 
     function isInComplaintPhase() public view returns (bool) {
-        return block.number >= dealTime && block.number < complaintTime;
+        uint256 blockNum = blockNumber();
+        return blockNum >= dealTime && blockNum < complaintTime;
     }
 
     function isDone() public view returns (bool) {
-        return block.number >= complaintTime;
+        uint256 blockNum = blockNumber();
+        return blockNum >= complaintTime;
     }
 
     /// @notice Registers a participant and assigns it an index in the group
@@ -273,5 +278,15 @@ contract DKG is ThresholdNetwork, IDKG {
 
     function emitDealBundle(uint32 _index, DealBundle memory _bundle) private {
         emit DealBundleSubmitted(_index, _bundle);
+    }
+
+    /// @notice returns the current block number of the chain of execution
+    /// @dev Calling block.number on Arbitrum returns the L1 block number, which is not desired
+    function blockNumber() private view returns (uint256) {
+        if (block.chainid == ARBITRUM_ONE || block.chainid == ARBITRUM_GOERLI) {
+            return ArbSys(address(100)).arbBlockNumber();
+        } else {
+            return block.number;
+        }
     }
 }
