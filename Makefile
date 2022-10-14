@@ -16,22 +16,23 @@ fmt    :; forge fmt
 
 # --- Deploy ---
 #  First deploy the factories
-local_deploy_dkgfactory           :; forge script script/DeployDKGFactory.s.sol:DeployDKGFactory --fork-url http://localhost:8545 --broadcast --verify -vvvv
-arbitrum_rinkeby_deploy_dkgfactory:; forge script script/DeployDKGFactory.s.sol:DeployDKGFactory --rpc-url $ARBITRUM_RINKEBY_RPC_URL --broadcast --verify -vvvv
-goerli_deploy_dkgfactory          :; forge script script/DeployDKGFactory.s.sol:DeployDKGFactory --rpc-url $GOERLI_RPC_URL --broadcast --verify -vvvv
+local_deploy_dkgfactory   :; forge script script/DeployDKGFactory.s.sol:DeployDKGFactory --rpc-url local --broadcast --verify -vvvv
+testnet_deploy_dkgfactory :; forge script script/DeployDKGFactory.s.sol:DeployDKGFactory --rpc-url arbitrum-goerli --broadcast -vvvv --skip-simulation --slow
 
-local_deploy_oraclefactory           :; forge script script/DeployOracleFactory.s.sol:DeployOracleFactory --fork-url http://localhost:8545 --broadcast --verify -vvvv
-arbitrum_rinkeby_deploy_oraclefactory:; forge script script/DeployOracleFactory.s.sol:DeployOracleFactory --rpc-url $ARBITRUM_RINKEBY_RPC_URL --broadcast --verify -vvvv
-goerli_deploy_dkgfactory             :; forge script script/DeployOracleFactory.s.sol:DeployOracleFactory --rpc-url $GOERLI_RPC_URL --broadcast --verify -vvvv
+local_deploy_oraclefactory  :; forge script script/DeployOracleFactory.s.sol:DeployOracleFactory --rpc-url local --broadcast --verify -vvvv
+testnet_deploy_oraclefactory:; forge script script/DeployOracleFactory.s.sol:DeployOracleFactory --rpc-url arbitrum-goerli --broadcast -vvvv --skip-simulation --slow
 
 # Then add authorized nodes
-local_add_authorized_nodes:; forge script script/AddAuthorizedNodes.s.sol:AddAuthorizedNodes --fork-url http://localhost:8545 --broadcast --verify -vvvv
+local_add_authorized_nodes  :; forge script script/AddAuthorizedNodes.s.sol:AddAuthorizedNodes --rpc-url local --broadcast --verify -vvvv
+testnet_add_authorized_nodes:; forge script script/AddAuthorizedNodes.s.sol:AddAuthorizedNodes --rpc-url arbitrum-goerli --broadcast -vvvv --skip-simulation --slow
 
 # Then deploy a DKG
-local_deploy_dkg:; forge script script/DeployDKGInstance.s.sol:DeployDKGInstance --fork-url http://localhost:8545 --broadcast --verify -vvvv
+local_deploy_dkg  :; forge script script/DeployDKGInstance.s.sol:DeployDKGInstance --rpc-url local --broadcast --verify -vvvv
+testnet_deploy_dkg:; forge script script/DeployDKGInstance.s.sol:DeployDKGInstance --rpc-url arbitrum-goerli --broadcast -vvvv --skip-simulation --slow
 
 # Then deploy an Oracle with the key created from the DKG
-local_deploy_oracle:; forge script script/DeployBN254EncryptionOracle.s.sol:DeployBN254EncryptionOracle --fork-url http://localhost:8545 --broadcast --verify -vvvv
+local_deploy_oracle  :; forge script script/DeployBN254EncryptionOracle.s.sol:DeployBN254EncryptionOracle --rpc-url local --broadcast --verify -vvvv
+testnet_deploy_oracle:; forge script script/DeployBN254EncryptionOracle.s.sol:DeployBN254EncryptionOracle --rpc-url arbitrum-goerli --broadcast -vvvv --skip-simulation --slow
 
 
 # --- Contract Calls ---
