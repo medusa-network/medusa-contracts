@@ -11,11 +11,10 @@ solc-version = "0.8.17"
 verbosity = 4
 
 [rpc_endpoints]
+local = "http://localhost:8545"
 arbitrum = "${ARBITRUM_RPC_URL}"
-arbitrum-rinkeby = "${ARBITRUM_RINKEBY_RPC_URL}"
-goerli = "${GOERLI_RPC_URL}"
+arbitrum-goerli = "${ARBITRUM_GOERLI_RPC_URL}"
 
 [etherscan]
 arbitrum = { key = "${ETHERSCAN_KEY}" }
-arbitrum-rinkeby = { key = "${ETHERSCAN_KEY}" }
-goerli = { key = "${ETHERSCAN_KEY}" }
+arbitrum-goerli = { key = "${ETHERSCAN_KEY}" }

@@ -9,6 +9,18 @@ abstract contract BaseScript is Script {
     using stdJson for string;
 
     function getOracleFactoryAddress() internal returns (address) {
+        return vm.envAddress("ORACLE_FACTORY_ADDRESS");
+    }
+
+    function getDKGFactoryAddress() internal returns (address) {
+        return vm.envAddress("DKG_FACTORY_ADDRESS");
+    }
+
+    function getDKGInstanceAddress() internal returns (address) {
+        return vm.envAddress("DKG_ADDRESS");
+    }
+
+    function getOracleFactoryAddressFromBroadcast() internal returns (address) {
         string memory filename = string(
             abi.encodePacked("broadcast/DeployOracleFactory.s.sol/", block.chainid.toString(), "/run-latest.json")
         );
@@ -17,7 +29,7 @@ abstract contract BaseScript is Script {
         return factoryAddr;
     }
 
-    function getDKGFactoryAddress() internal returns (address) {
+    function getDKGFactoryAddressFromBroadcast() internal returns (address) {
         string memory filename =
             string(abi.encodePacked("broadcast/DeployDKGFactory.s.sol/", block.chainid.toString(), "/run-latest.json"));
         string memory json = vm.readFile(filename);
@@ -25,7 +37,7 @@ abstract contract BaseScript is Script {
         return factoryAddr;
     }
 
-    function getDKGInstanceAddress() internal returns (address) {
+    function getDKGInstanceAddressFromBroadcast() internal returns (address) {
         string memory filename =
             string(abi.encodePacked("broadcast/DeployDKGInstance.s.sol/", block.chainid.toString(), "/run-latest.json"));
         string memory json = vm.readFile(filename);
