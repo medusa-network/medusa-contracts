@@ -13,7 +13,7 @@ error InsufficentFunds();
 struct Listing {
     address seller;
     uint256 price;
-    bytes link;
+    bytes uri;
 }
 
 contract MedusaFans is IEncryptionClient, PullPayment {
@@ -23,9 +23,9 @@ contract MedusaFans is IEncryptionClient, PullPayment {
     /// @notice A mapping from cipherId to listing
     mapping(uint256 => Listing) public listings;
 
-    event NewOracleResult(uint256 requestId, Ciphertext ciphertext);
-    event NewListing(address indexed seller, uint256 cipherId, bytes link);
-    event NewSale(address indexed buyer, uint256 cipherId, bytes link);
+    event ListingDecryption(uint256 requestId, Ciphertext ciphertext);
+    event NewListing(address indexed seller, uint256 cipherId, bytes uri);
+    event NewSale(address indexed buyer, uint256 cipherId, bytes uri);
 
     modifier onlyOracle() {
         if (msg.sender != address(oracle)) {
@@ -41,10 +41,10 @@ contract MedusaFans is IEncryptionClient, PullPayment {
     /// @notice Create a new listing
     /// @dev Submits a ciphertext to the oracle, stores a listing, and emits an event
     /// @return cipherId The id of the ciphertext associated with the new listing
-    function createListing(uint256 price, Ciphertext calldata cipher, bytes calldata link) external returns (uint256) {
-        uint256 cipherId = oracle.submitCiphertext(cipher, link);
-        listings[cipherId] = Listing(msg.sender, price, link);
-        emit NewListing(msg.sender, cipherId, link);
+    function createListing(uint256 price, Ciphertext calldata cipher, bytes calldata uri) external returns (uint256) {
+        uint256 cipherId = oracle.submitCiphertext(cipher, uri);
+        listings[cipherId] = Listing(msg.sender, price, uri);
+        emit NewListing(msg.sender, cipherId, uri);
         return cipherId;
     }
 
@@ -60,19 +60,19 @@ contract MedusaFans is IEncryptionClient, PullPayment {
             revert InsufficentFunds();
         }
         _asyncTransfer(listing.seller, msg.value);
-        emit NewSale(msg.sender, cipherId, listing.link);
+        emit NewSale(msg.sender, cipherId, listing.uri);
         return oracle.requestReencryption(cipherId, buyerPublicKey);
     }
 
     /// @inheritdoc IEncryptionClient
     function oracleResult(uint256 requestId, Ciphertext calldata cipher) external onlyOracle {
-        emit NewOracleResult(requestId, cipher);
+        emit ListingDecryption(requestId, cipher);
     }
 
     /// @notice Convenience function to get the public key of the oracle
     /// @dev This is the public key that sellers should use to encrypt their listing ciphertext
     /// @dev Note: This feels like a nice abstraction, but it's not strictly necessary
-    function distributedKey() external view returns (G1Point memory) {
+    function publicKey() external view returns (G1Point memory) {
         return oracle.distributedKey();
     }
 }
