@@ -52,6 +52,26 @@ library Bn128 {
         }
     }
 
+    /// @dev Wraps the scalar point multiplication pre-compile introduced in
+    ///      Byzantium. The result of a point from G1 multiplied by a scalar
+    ///      should match the point added to itself the same number of times.
+    ///      Revert if the provided point isn't on the curve.
+    function scalarMultiply(G1Point memory p_1, uint256 scalar)
+        internal
+        view
+        returns (G1Point memory p_2)
+    {
+        assembly {
+            let arg := mload(0x40)
+            mstore(arg, mload(p_1))
+            mstore(add(arg, 0x20), mload(add(p_1, 0x20)))
+            mstore(add(arg, 0x40), scalar)
+            // 0x07 is the ECMUL precompile address
+            if iszero(staticcall(not(0), 0x07, arg, 0x60, p_2, 0x40)) {
+                revert(0, 0)
+            }
+        }
+    }
     /// @dev Wraps the point addition pre-compile introduced in Byzantium.
     ///      Returns the sum of two points on G1. Revert if the provided points
     ///      are not on the curve.
@@ -104,6 +124,10 @@ library Bn128 {
     /// @return 0x01 if y is an even number and 0x00 if it's odd.
     function parity(uint256 value) public pure returns (bytes1) {
         return bytes32(value)[31] & 0x01;
+    }
+
+    function g1() public pure returns (G1Point memory) {
+        return G1Point(g1x, g1y);
     }
 }
 

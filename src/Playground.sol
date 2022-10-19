@@ -5,6 +5,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
 import {Ciphertext} from "./EncryptionOracle.sol";
 import {Bn128, G1Point} from "./Bn128.sol";
+import {BN254DefaultDleq as Dleq} from "./Dleq.sol";
 
 /*import "./altbn128.sol";*/
 
@@ -68,5 +69,12 @@ contract Playground is BN254EncryptionOracle {
 
     function logCipher(uint256 id, Ciphertext calldata _cipher) external {
         emit NewLogCipher(id, _cipher.random.x, _cipher.random.y, _cipher.cipher);
+    }
+
+    function verifyDLEQProof(G1Point calldata _rg1,
+        G1Point calldata _rg2,
+        Dleq.Proof calldata _proof,
+        string calldata _label) external returns (bool) {
+            return Dleq.verify(_rg1,_rg2,_proof,_label);
     }
 }
