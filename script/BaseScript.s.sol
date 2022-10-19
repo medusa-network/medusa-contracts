@@ -16,6 +16,10 @@ abstract contract BaseScript is Script {
         return vm.envAddress("DKG_FACTORY_ADDRESS");
     }
 
+    function getOracleInstanceAddress() internal returns (address) {
+        return vm.envAddress("ORACLE_ADDRESS");
+    }
+
     function getDKGInstanceAddress() internal returns (address) {
         return vm.envAddress("DKG_ADDRESS");
     }
