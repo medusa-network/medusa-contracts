@@ -24,8 +24,10 @@ contract MedusaFans is IEncryptionClient, PullPayment {
     mapping(uint256 => Listing) public listings;
 
     event ListingDecryption(uint256 requestId, Ciphertext ciphertext);
-    event NewListing(address indexed seller, uint256 cipherId, bytes uri);
-    event NewSale(address indexed buyer, uint256 cipherId, bytes uri);
+    event NewListing(
+        address indexed seller, uint256 indexed cipherId, bytes name, bytes description, uint256 price, bytes uri
+    );
+    event NewSale(address indexed buyer, uint256 indexed cipherId);
 
     modifier onlyOracle() {
         if (msg.sender != address(oracle)) {
@@ -41,10 +43,16 @@ contract MedusaFans is IEncryptionClient, PullPayment {
     /// @notice Create a new listing
     /// @dev Submits a ciphertext to the oracle, stores a listing, and emits an event
     /// @return cipherId The id of the ciphertext associated with the new listing
-    function createListing(uint256 price, Ciphertext calldata cipher, bytes calldata uri) external returns (uint256) {
+    function createListing(
+        Ciphertext calldata cipher,
+        bytes calldata name,
+        bytes calldata description,
+        uint256 price,
+        bytes calldata uri
+    ) external returns (uint256) {
         uint256 cipherId = oracle.submitCiphertext(cipher, uri);
         listings[cipherId] = Listing(msg.sender, price, uri);
-        emit NewListing(msg.sender, cipherId, uri);
+        emit NewListing(msg.sender, cipherId, name, description, price, uri);
         return cipherId;
     }
 
@@ -60,7 +68,7 @@ contract MedusaFans is IEncryptionClient, PullPayment {
             revert InsufficentFunds();
         }
         _asyncTransfer(listing.seller, msg.value);
-        emit NewSale(msg.sender, cipherId, listing.uri);
+        emit NewSale(msg.sender, cipherId);
         return oracle.requestReencryption(cipherId, buyerPublicKey);
     }
 
