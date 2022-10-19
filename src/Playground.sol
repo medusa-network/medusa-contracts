@@ -74,7 +74,7 @@ contract Playground is BN254EncryptionOracle {
     function verifyDLEQProof(G1Point calldata _rg1,
         G1Point calldata _rg2,
         Dleq.Proof calldata _proof,
-        string calldata _label) external returns (bool) {
+        string calldata _label) public returns (bool) {
             return Dleq.verify(_rg1,_rg2,_proof,_label);
     }
 }

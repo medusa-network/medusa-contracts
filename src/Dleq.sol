@@ -2,7 +2,6 @@
 pragma solidity ^0.8.17;
 
 import {G1Point, Bn128} from "./Bn128.sol";
-import {Suite} from "../src/OracleFactory.sol";
 
 /// DLEQ proof of equality between two bases
 library BN254DefaultDleq {
@@ -50,9 +49,5 @@ library BN254DefaultDleq {
             return true;
         }
         return false;
-    }
-
-    function suite() external pure returns (Suite) {
-        return Suite.BN254_KEYG1_HGAMAL;
     }
 }
