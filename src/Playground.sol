@@ -5,7 +5,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
 import {Ciphertext} from "./EncryptionOracle.sol";
 import {Bn128, G1Point} from "./Bn128.sol";
-import {BN254DefaultDleq as Dleq} from "./Dleq.sol";
+import {Dleq} from "./DleqBN128.sol";
 
 /*import "./altbn128.sol";*/
 
@@ -26,15 +26,27 @@ contract Playground is BN254EncryptionOracle {
         /*acc2.y = 0;*/
     }
 
-    function compressPoint(G1Point calldata _point) external pure returns (uint256) {
+    function compressPoint(G1Point calldata _point)
+        external
+        pure
+        returns (uint256)
+    {
         return uint256(_point.g1Compress());
     }
 
-    function parityPoint(G1Point calldata _point) external pure returns (uint8) {
+    function parityPoint(G1Point calldata _point)
+        external
+        pure
+        returns (uint8)
+    {
         return uint8(bytes32(_point.y)[31] & 0x01);
     }
 
-    function decompressPoint(uint256 _point) external view returns (G1Point memory) {
+    function decompressPoint(uint256 _point)
+        external
+        view
+        returns (G1Point memory)
+    {
         return bytes32(_point).g1Decompress();
     }
 
@@ -65,16 +77,28 @@ contract Playground is BN254EncryptionOracle {
         return uint256(getAccumulator().g1Compress());
     }
 
-    event NewLogCipher(uint256 indexed id, uint256 rx, uint256 ry, uint256 cipher);
+    event NewLogCipher(
+        uint256 indexed id,
+        uint256 rx,
+        uint256 ry,
+        uint256 cipher
+    );
 
     function logCipher(uint256 id, Ciphertext calldata _cipher) external {
-        emit NewLogCipher(id, _cipher.random.x, _cipher.random.y, _cipher.cipher);
+        emit NewLogCipher(
+            id,
+            _cipher.random.x,
+            _cipher.random.y,
+            _cipher.cipher
+        );
     }
 
-    function verifyDLEQProof(G1Point calldata _rg1,
+    function verifyDLEQProof(
+        G1Point calldata _rg1,
         G1Point calldata _rg2,
         Dleq.Proof calldata _proof,
-        string calldata _label) public returns (bool) {
-            return Dleq.verify(_rg1,_rg2,_proof,_label);
+        string calldata _label
+    ) public view returns (bool) {
+        return Dleq.verify(_rg1, _rg2, _proof, _label);
     }
 }

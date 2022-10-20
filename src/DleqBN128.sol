@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import {G1Point, Bn128} from "./Bn128.sol";
 
 /// DLEQ proof of equality between two bases
-library BN254DefaultDleq {
+library Dleq {
     using Bn128 for G1Point;
 
     struct Proof {
@@ -23,7 +23,7 @@ library BN254DefaultDleq {
         G1Point calldata _rg2,
         Proof calldata _proof,
         string calldata _label
-    ) public view returns (bool) {
+    ) internal view returns (bool) {
         G1Point memory w1 = Bn128.g1().scalarMultiply(_proof.f).g1Add(
             _rg1.scalarMultiply(_proof.e)
         );

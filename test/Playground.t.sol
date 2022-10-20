@@ -3,10 +3,26 @@ pragma solidity ^0.8.17;
 
 import "ds-test/test.sol";
 
-contract PlaygroundTest is DSTest {
-    function setUp() public {}
+import {Playground} from "../src/Playground.sol";
+import {Bn128, G1Point} from "../src/Bn128.sol";
+import {Dleq} from "../src/DleqBN128.sol";
 
-    function testExample() public {
+contract PlaygroundTest is DSTest {
+    Playground private client;
+
+    function setUp() public {
+        client = new Playground();
+    }
+
+    function testDleq() public {
         assertTrue(true);
+        assertTrue(
+            !client.verifyDLEQProof(
+                Bn128.g1(),
+                Bn128.g1(),
+                Dleq.Proof(1, 2),
+                "mylabel"
+            )
+        );
     }
 }
