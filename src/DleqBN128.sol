@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {G1Point, Bn128} from "./Bn128.sol";
+import {G1Point} from "./Bn128.sol";
 
 /// DLEQ proof of equality between two bases
 library Dleq {
-    using Bn128 for G1Point;
+    //using Bn128 for G1Point;
 
     struct Proof {
         uint256 f;
@@ -24,30 +24,28 @@ library Dleq {
         Proof calldata _proof,
         string calldata _label
     ) internal view returns (bool) {
-        G1Point memory w1 = Bn128.g1().scalarMultiply(_proof.f).g1Add(
-            _rg1.scalarMultiply(_proof.e)
-        );
-        G1Point memory w2 = G1Point(base2x, base2y)
-            .scalarMultiply(_proof.f)
-            .g1Add(_rg1.scalarMultiply(_proof.e));
-        uint256 challenge = uint256(
-            sha256(
-                abi.encodePacked(
-                    _label,
-                    _rg1.x,
-                    _rg1.y,
-                    _rg2.x,
-                    _rg2.y,
-                    w1.x,
-                    w1.y,
-                    w2.x,
-                    w2.y
-                )
-            )
-        );
-        if (challenge == _proof.e) {
-            return true;
-        }
+        //G1Point memory w1 = Bn128.g1();//.scalarMultiply(_proof.f);//.g1Add( _rg1.scalarMultiply(_proof.e));
+        // G1Point memory w2 = G1Point(base2x, base2y)
+        //     .scalarMultiply(_proof.f)
+        //     .g1Add(_rg1.scalarMultiply(_proof.e));
+        // uint256 challenge = uint256(
+        //     sha256(
+        //         abi.encodePacked(
+        //             _label,
+        //             _rg1.x,
+        //             _rg1.y,
+        //             _rg2.x,
+        //             _rg2.y,
+        //             w1.x,
+        //             w1.y,
+        //             w2.x,
+        //             w2.y
+        //         )
+        //     )
+        // );
+        // if (challenge == _proof.e) {
+        //     return true;
+        // }
         return false;
     }
 }

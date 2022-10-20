@@ -4,8 +4,9 @@ pragma solidity ^0.8.17;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
 import {Ciphertext} from "./EncryptionOracle.sol";
-import {Bn128, G1Point} from "./Bn128.sol";
-import {Dleq} from "./DleqBN128.sol";
+import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
+
+//import {Dleq} from "./DleqBN128.sol";
 
 /*import "./altbn128.sol";*/
 
@@ -93,12 +94,32 @@ contract Playground is BN254EncryptionOracle {
         );
     }
 
+    //function debleq(Bn128.DleqProof calldata p, G1Point calldata r1)
+    function debleq(G1Point memory r1, DleqProof memory proof)
+        public
+        view
+        returns (G1Point memory)
+    {
+        return Bn128.debleq(proof, r1);
+    }
+
     function verifyDLEQProof(
         G1Point calldata _rg1,
         G1Point calldata _rg2,
-        Dleq.Proof calldata _proof,
-        string calldata _label
+        DleqProof calldata _proof,
+        bytes32 _label
     ) public view returns (bool) {
-        return Dleq.verify(_rg1, _rg2, _proof, _label);
+        return Bn128.dleqverify(_rg1, _rg2, _proof, _label);
+    }
+
+    function shathis(
+        G1Point calldata label_point,
+        address label_addr,
+        G1Point calldata hashPoint
+    ) public view returns (bytes32) {
+        bytes32 label = sha256(
+            abi.encodePacked(label_addr, label_point.x, label_point.y)
+        );
+        return sha256(abi.encodePacked(label, hashPoint.x, hashPoint.y));
     }
 }
