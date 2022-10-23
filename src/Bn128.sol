@@ -38,25 +38,8 @@ library Bn128 {
         5671920232091439599101938152932944148754342563866262832106763099907508111378;
     uint256 internal constant base2y =
         2648212145371980650762357218546059709774557459353804686023280323276775278879;
-
-   
-
-    function debleq(
-        DleqProof memory proof,
-        G1Point memory r1
-    )
-        public
-        view
-        returns (
-            //G1Point calldata _rg2,
-            G1Point memory
-        )
-    {
-        // w1 = f*G1 + rG1 * e
-        G1Point memory w1 = scalarMultiply(g1(),proof.f);
-            //Bn128.scalarMultiply(r1, proof.e)
-        return w1;
-    }
+    uint256 internal constant r =
+        21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     /// TODO XXX Can't extract that in its own library because then can't instantiate in Typescript correctly
     /// Seems like a linked library problem with typechain.
@@ -64,8 +47,15 @@ library Bn128 {
         G1Point calldata _rg1,
         G1Point calldata _rg2,
         DleqProof calldata _proof,
-        bytes32 _label
-    ) internal view returns (bool) {
+        uint256 _label
+    )
+        internal
+        view
+        returns (
+            //) internal view returns (G1Point memory) {
+            bool
+        )
+    {
         // w1 = f*G1 + rG1 * e
         G1Point memory w1 = g1Add(
             scalarMultiply(g1(), _proof.f),
@@ -78,7 +68,7 @@ library Bn128 {
         );
         uint256 challenge = uint256(
             sha256(
-                abi.encode(
+                abi.encodePacked(
                     _label,
                     _rg1.x,
                     _rg1.y,
@@ -90,7 +80,11 @@ library Bn128 {
                     w2.y
                 )
             )
-        );
+        ) % r;
+        //return _proof.f;
+        //return scalarMultiply(g1(), _proof.f);
+        //return w2;
+        //return challenge;
         if (challenge == _proof.e) {
             return true;
         }
@@ -135,6 +129,10 @@ library Bn128 {
         view
         returns (G1Point memory p_2)
     {
+        // 0x07     id of the bn256ScalarMul precompile
+        // 0        number of ether to transfer
+        // 96       size of call parameters, i.e. 96 bytes total (256 bit for x, 256 bit for y, 256 bit for scalar)
+        // 64       size of call return value, i.e. 64 bytes / 512 bit for a BN256 curve point
         assembly {
             let arg := mload(0x40)
             mstore(arg, mload(p_1))

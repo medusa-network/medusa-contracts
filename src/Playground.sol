@@ -17,6 +17,7 @@ contract Playground is BN254EncryptionOracle {
     uint256 private nonce;
 
     G1Point private accumulator;
+    address private oracle;
 
     /*altbn128.G1Point private acc2;*/
 
@@ -94,21 +95,67 @@ contract Playground is BN254EncryptionOracle {
         );
     }
 
-    //function debleq(Bn128.DleqProof calldata p, G1Point calldata r1)
-    function debleq(G1Point memory r1, DleqProof memory proof)
+    function scalarMul(G1Point calldata p, uint256 r)
         public
         view
         returns (G1Point memory)
     {
-        return Bn128.debleq(proof, r1);
+        return Bn128.scalarMultiply(p, r);
+    }
+
+    function pointAdd(G1Point calldata p1, G1Point calldata p2)
+        public
+        view
+        returns (G1Point memory)
+    {
+        return Bn128.g1Add(p1, p2);
+    }
+
+    function identity(G1Point calldata p1)
+        public
+        view
+        returns (G1Point memory)
+    {
+        return p1;
+    }
+
+    function idScalar(uint256 s) public view returns (uint256) {
+        return s;
+    }
+
+    function deployOracle(G1Point memory distkey) public returns (address) {
+        BN254EncryptionOracle _oracle = new BN254EncryptionOracle(distkey);
+        oracle = address(_oracle);
+        return oracle;
+    }
+
+    function submitCiphertextToOracle(
+        Ciphertext calldata _cipher,
+        bytes calldata _link,
+        address _encryptor
+    ) public returns (uint256) {
+        require(oracle != address(0), "oracle not deployed");
+        return
+            BN254EncryptionOracle(oracle).submitCiphertext(
+                _cipher,
+                _link,
+                _encryptor
+            );
     }
 
     function verifyDLEQProof(
         G1Point calldata _rg1,
         G1Point calldata _rg2,
         DleqProof calldata _proof,
-        bytes32 _label
-    ) public view returns (bool) {
+        uint256 _label
+    )
+        public
+        view
+        returns (
+            // ) public view returns (G1Point memory) {
+            bool
+        )
+    {
         return Bn128.dleqverify(_rg1, _rg2, _proof, _label);
     }
 

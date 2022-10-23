@@ -130,19 +130,19 @@ abstract contract EncryptionOracle is
         bytes calldata _link,
         address _encryptor
     ) external whenNotPaused returns (uint256) {
-        bytes32 label = sha256(
-            abi.encode(distKey.x, distKey.y, msg.sender, _encryptor)
-        );
-        if (
-            !Bn128.dleqverify(
-                _cipher.random,
-                _cipher.random2,
-                _cipher.dleq,
-                label
-            )
-        ) {
-            revert InvalidCiphertextProof();
-        }
+        //bytes32 label = sha256(
+        //    abi.encode(distKey.x, distKey.y, msg.sender, _encryptor)
+        //);
+        //if (
+        //    !Bn128.dleqverify(
+        //        _cipher.random,
+        //        _cipher.random2,
+        //        _cipher.dleq,
+        //        label
+        //    )
+        //) {
+        //    revert InvalidCiphertextProof();
+        //}
         uint256 id = newCipherId();
         emit NewCiphertext(id, _cipher, _link, msg.sender);
         return id;
