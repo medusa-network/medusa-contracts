@@ -5,12 +5,15 @@ import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Suite} from "./OracleFactory.sol";
 import {ThresholdNetwork} from "./DKG.sol";
-import {Bn128, G1Point} from "./Bn128.sol";
+import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
 
 /// @notice A 32-byte encrypted ciphertext
 struct Ciphertext {
     G1Point random;
     uint256 cipher;
+    /// DLEQ part
+    G1Point random2;
+    DleqProof dleq;
 }
 
 interface IEncryptionClient {
@@ -24,7 +27,12 @@ interface IEncryptionClient {
 interface IEncryptionOracle {
     function requestReencryption(uint256 _cipherId, G1Point calldata _publickey) external returns (uint256);
 
-    function submitCiphertext(Ciphertext calldata _cipher, bytes calldata _link) external returns (uint256);
+    /// @notice submit a ciphertext that can be retrieved at the given link and
+    /// has been created by this encryptor address. The ciphertext proof is checked
+    /// and if correct, being signalled to Medusa.
+    function submitCiphertext(Ciphertext calldata _cipher, bytes calldata _link, address _encryptor)
+        external
+        returns (uint256);
 
     function deliverReencryption(uint256 _requestId, Ciphertext calldata _cipher) external returns (bool);
 
@@ -47,6 +55,11 @@ error RequestDoesNotExist();
 
 /// @notice Reverts when the client's callback function reverts
 error OracleResultFailed(string errorMsg);
+
+/// @notice invalid ciphertext proof. This can happen when one submits a ciphertext
+/// being made for one chainid, or for one smart contract  but is being submitted
+/// to another.
+error InvalidCiphertextProof();
 
 /// @title An abstract EncryptionOracle that receives requests and posts results for reencryption
 /// @notice You must implement your encryption suite when inheriting from this contract
@@ -89,11 +102,15 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     /// @param _cipher The ciphertext of an encrypted key
     /// @param _link The link to the encrypted contents
     /// @return the id of the newly registered ciphertext
-    function submitCiphertext(Ciphertext calldata _cipher, bytes calldata _link)
+    function submitCiphertext(Ciphertext calldata _cipher, bytes calldata _link, address _encryptor)
         external
         whenNotPaused
         returns (uint256)
     {
+        uint256 label = uint256(sha256(abi.encodePacked(distKey.x, distKey.y, msg.sender, _encryptor)));
+        if (!Bn128.dleqverify(_cipher.random, _cipher.random2, _cipher.dleq, label)) {
+            revert InvalidCiphertextProof();
+        }
         uint256 id = newCipherId();
         emit NewCiphertext(id, _cipher, _link, msg.sender);
         return id;

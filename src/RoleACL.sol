@@ -41,7 +41,7 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
         onlyRole(WRITER_ROLE)
         returns (uint256)
     {
-        return oracle.submitCiphertext(_cipher, _link);
+        return oracle.submitCiphertext(_cipher, _link, msg.sender);
     }
 
     function askForDecryption(uint256 _id) external {
