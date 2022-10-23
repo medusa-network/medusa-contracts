@@ -13,7 +13,7 @@ error InsufficentFunds();
 struct Listing {
     address seller;
     uint256 price;
-    bytes uri;
+    string uri;
 }
 
 contract MedusaFans is IEncryptionClient, PullPayment {
@@ -23,11 +23,11 @@ contract MedusaFans is IEncryptionClient, PullPayment {
     /// @notice A mapping from cipherId to listing
     mapping(uint256 => Listing) public listings;
 
-    event ListingDecryption(uint256 requestId, Ciphertext ciphertext);
+    event ListingDecryption(uint256 indexed requestId, Ciphertext ciphertext);
     event NewListing(
-        address indexed seller, uint256 indexed cipherId, bytes name, bytes description, uint256 price, bytes uri
+        address indexed seller, uint256 indexed cipherId, string name, string description, uint256 price, string uri
     );
-    event NewSale(address indexed buyer, uint256 indexed cipherId);
+    event NewSale(address indexed buyer, address indexed seller, uint256 requestId, uint256 cipherId);
 
     modifier onlyOracle() {
         if (msg.sender != address(oracle)) {
@@ -45,12 +45,12 @@ contract MedusaFans is IEncryptionClient, PullPayment {
     /// @return cipherId The id of the ciphertext associated with the new listing
     function createListing(
         Ciphertext calldata cipher,
-        bytes calldata name,
-        bytes calldata description,
+        string calldata name,
+        string calldata description,
         uint256 price,
-        bytes calldata uri
+        string calldata uri
     ) external returns (uint256) {
-        uint256 cipherId = oracle.submitCiphertext(cipher, uri);
+        uint256 cipherId = oracle.submitCiphertext(cipher, bytes(uri));
         listings[cipherId] = Listing(msg.sender, price, uri);
         emit NewListing(msg.sender, cipherId, name, description, price, uri);
         return cipherId;
@@ -68,8 +68,9 @@ contract MedusaFans is IEncryptionClient, PullPayment {
             revert InsufficentFunds();
         }
         _asyncTransfer(listing.seller, msg.value);
-        emit NewSale(msg.sender, cipherId);
-        return oracle.requestReencryption(cipherId, buyerPublicKey);
+        uint256 requestId = oracle.requestReencryption(cipherId, buyerPublicKey);
+        emit NewSale(msg.sender, listing.seller, requestId, cipherId);
+        return requestId;
     }
 
     /// @inheritdoc IEncryptionClient

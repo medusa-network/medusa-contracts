@@ -34,6 +34,13 @@ testnet_deploy_dkg:; forge script script/DeployDKGInstance.s.sol:DeployDKGInstan
 local_deploy_oracle  :; forge script script/DeployBN254EncryptionOracle.s.sol:DeployBN254EncryptionOracle --rpc-url local --broadcast --verify -vvvv
 testnet_deploy_oracle:; forge script script/DeployBN254EncryptionOracle.s.sol:DeployBN254EncryptionOracle --rpc-url arbitrum-goerli --broadcast -vvvv --skip-simulation --slow
 
+testnet_deploy_client:; forge script script/DeployMedusaFans.s.sol:DeployMedusaFans --rpc-url arbitrum-goerli --broadcast -vvvv --skip-simulation --slow
+
+deploy_dkg:; cast send ${DKG_FACTORY_ADDRESS} \
+	"deployNewDKG()" \
+	--rpc-url arbitrum-goerli \
+	--private-key ${PRIVATE_KEY}
+
 
 # --- Contract Calls ---
 # Send ether to dead account to progress anvil blockchain
