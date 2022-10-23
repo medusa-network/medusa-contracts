@@ -50,7 +50,7 @@ contract MedusaFans is IEncryptionClient, PullPayment {
         uint256 price,
         string calldata uri
     ) external returns (uint256) {
-        uint256 cipherId = oracle.submitCiphertext(cipher, bytes(uri));
+        uint256 cipherId = oracle.submitCiphertext(cipher, bytes(uri), msg.sender);
         listings[cipherId] = Listing(msg.sender, price, uri);
         emit NewListing(msg.sender, cipherId, name, description, price, uri);
         return cipherId;
