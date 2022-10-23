@@ -28,27 +28,15 @@ contract Playground is BN254EncryptionOracle {
         /*acc2.y = 0;*/
     }
 
-    function compressPoint(G1Point calldata _point)
-        external
-        pure
-        returns (uint256)
-    {
+    function compressPoint(G1Point calldata _point) external pure returns (uint256) {
         return uint256(_point.g1Compress());
     }
 
-    function parityPoint(G1Point calldata _point)
-        external
-        pure
-        returns (uint8)
-    {
+    function parityPoint(G1Point calldata _point) external pure returns (uint8) {
         return uint8(bytes32(_point.y)[31] & 0x01);
     }
 
-    function decompressPoint(uint256 _point)
-        external
-        view
-        returns (G1Point memory)
-    {
+    function decompressPoint(uint256 _point) external view returns (G1Point memory) {
         return bytes32(_point).g1Decompress();
     }
 
@@ -79,43 +67,21 @@ contract Playground is BN254EncryptionOracle {
         return uint256(getAccumulator().g1Compress());
     }
 
-    event NewLogCipher(
-        uint256 indexed id,
-        uint256 rx,
-        uint256 ry,
-        uint256 cipher
-    );
+    event NewLogCipher(uint256 indexed id, uint256 rx, uint256 ry, uint256 cipher);
 
     function logCipher(uint256 id, Ciphertext calldata _cipher) external {
-        emit NewLogCipher(
-            id,
-            _cipher.random.x,
-            _cipher.random.y,
-            _cipher.cipher
-        );
+        emit NewLogCipher(id, _cipher.random.x, _cipher.random.y, _cipher.cipher);
     }
 
-    function scalarMul(G1Point calldata p, uint256 r)
-        public
-        view
-        returns (G1Point memory)
-    {
+    function scalarMul(G1Point calldata p, uint256 r) public view returns (G1Point memory) {
         return Bn128.scalarMultiply(p, r);
     }
 
-    function pointAdd(G1Point calldata p1, G1Point calldata p2)
-        public
-        view
-        returns (G1Point memory)
-    {
+    function pointAdd(G1Point calldata p1, G1Point calldata p2) public view returns (G1Point memory) {
         return Bn128.g1Add(p1, p2);
     }
 
-    function identity(G1Point calldata p1)
-        public
-        view
-        returns (G1Point memory)
-    {
+    function identity(G1Point calldata p1) public view returns (G1Point memory) {
         return p1;
     }
 
@@ -129,26 +95,15 @@ contract Playground is BN254EncryptionOracle {
         return oracle;
     }
 
-    function submitCiphertextToOracle(
-        Ciphertext calldata _cipher,
-        bytes calldata _link,
-        address _encryptor
-    ) public returns (uint256) {
+    function submitCiphertextToOracle(Ciphertext calldata _cipher, bytes calldata _link, address _encryptor)
+        public
+        returns (uint256)
+    {
         require(oracle != address(0), "oracle not deployed");
-        return
-            BN254EncryptionOracle(oracle).submitCiphertext(
-                _cipher,
-                _link,
-                _encryptor
-            );
+        return BN254EncryptionOracle(oracle).submitCiphertext(_cipher, _link, _encryptor);
     }
 
-    function verifyDLEQProof(
-        G1Point calldata _rg1,
-        G1Point calldata _rg2,
-        DleqProof calldata _proof,
-        uint256 _label
-    )
+    function verifyDLEQProof(G1Point calldata _rg1, G1Point calldata _rg2, DleqProof calldata _proof, uint256 _label)
         public
         view
         returns (
@@ -159,14 +114,12 @@ contract Playground is BN254EncryptionOracle {
         return Bn128.dleqverify(_rg1, _rg2, _proof, _label);
     }
 
-    function shathis(
-        G1Point calldata label_point,
-        address label_addr,
-        G1Point calldata hashPoint
-    ) public view returns (bytes32) {
-        bytes32 label = sha256(
-            abi.encodePacked(label_addr, label_point.x, label_point.y)
-        );
+    function shathis(G1Point calldata label_point, address label_addr, G1Point calldata hashPoint)
+        public
+        view
+        returns (bytes32)
+    {
+        bytes32 label = sha256(abi.encodePacked(label_addr, label_point.x, label_point.y));
         return sha256(abi.encodePacked(label, hashPoint.x, hashPoint.y));
     }
 }

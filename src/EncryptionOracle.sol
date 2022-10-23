@@ -21,28 +21,20 @@ interface IEncryptionClient {
     /// @dev Implement in client contracts of medusa
     /// @param requestId The id of the original request
     /// @param _cipher the reencryption result
-    function oracleResult(uint256 requestId, Ciphertext calldata _cipher)
-        external;
+    function oracleResult(uint256 requestId, Ciphertext calldata _cipher) external;
 }
 
 interface IEncryptionOracle {
-    function requestReencryption(uint256 _cipherId, G1Point calldata _publickey)
-        external
-        returns (uint256);
+    function requestReencryption(uint256 _cipherId, G1Point calldata _publickey) external returns (uint256);
 
     /// @notice submit a ciphertext that can be retrieved at the given link and
     /// has been created by this encryptor address. The ciphertext proof is checked
     /// and if correct, being signalled to Medusa.
-    function submitCiphertext(
-        Ciphertext calldata _cipher,
-        bytes calldata _link,
-        address _encryptor
-    ) external returns (uint256);
+    function submitCiphertext(Ciphertext calldata _cipher, bytes calldata _link, address _encryptor)
+        external
+        returns (uint256);
 
-    function deliverReencryption(
-        uint256 _requestId,
-        Ciphertext calldata _cipher
-    ) external returns (bool);
+    function deliverReencryption(uint256 _requestId, Ciphertext calldata _cipher) external returns (bool);
 
     /// @notice All instance contracts must implement their own encryption suite
     /// @dev e.g. BN254_KEYG1_HGAMAL
@@ -51,21 +43,11 @@ interface IEncryptionOracle {
 
     /// @notice Emitted when a new cipher text is registered with medusa
     /// @dev Broadcasts the id, cipher text, and client or owner of the cipher text
-    event NewCiphertext(
-        uint256 indexed id,
-        Ciphertext ciphertext,
-        bytes link,
-        address client
-    );
+    event NewCiphertext(uint256 indexed id, Ciphertext ciphertext, bytes link, address client);
 
     /// @notice Emitted when a new request is sent to medusa
     /// @dev Requests can be sent by clients that do not own the cipher text; must verify the request off-chain
-    event ReencryptionRequest(
-        uint256 indexed cipherId,
-        uint256 requestId,
-        G1Point publicKey,
-        address client
-    );
+    event ReencryptionRequest(uint256 indexed cipherId, uint256 requestId, G1Point publicKey, address client);
 }
 
 /// @notice Reverts when delivering a response for a non-existent request
@@ -82,12 +64,7 @@ error InvalidCiphertextProof();
 /// @title An abstract EncryptionOracle that receives requests and posts results for reencryption
 /// @notice You must implement your encryption suite when inheriting from this contract
 /// @dev DOES NOT currently validate reencryption results OR implement fees for the medusa oracle network
-abstract contract EncryptionOracle is
-    ThresholdNetwork,
-    IEncryptionOracle,
-    Ownable,
-    Pausable
-{
+abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownable, Pausable {
     /// @notice A pending reencryption request
     /// @dev client client's address to callback with a response
     struct PendingRequest {
@@ -125,11 +102,11 @@ abstract contract EncryptionOracle is
     /// @param _cipher The ciphertext of an encrypted key
     /// @param _link The link to the encrypted contents
     /// @return the id of the newly registered ciphertext
-    function submitCiphertext(
-        Ciphertext calldata _cipher,
-        bytes calldata _link,
-        address _encryptor
-    ) external whenNotPaused returns (uint256) {
+    function submitCiphertext(Ciphertext calldata _cipher, bytes calldata _link, address _encryptor)
+        external
+        whenNotPaused
+        returns (uint256)
+    {
         //bytes32 label = sha256(
         //    abi.encode(distKey.x, distKey.y, msg.sender, _encryptor)
         //);
@@ -171,10 +148,11 @@ abstract contract EncryptionOracle is
     /// @param _requestId the pending request id; used to callback the correct client
     /// @param _cipher The reencryption result for the request
     /// @return true if the client callback succeeds, otherwise reverts with OracleResultFailed
-    function deliverReencryption(
-        uint256 _requestId,
-        Ciphertext calldata _cipher
-    ) external whenNotPaused returns (bool) {
+    function deliverReencryption(uint256 _requestId, Ciphertext calldata _cipher)
+        external
+        whenNotPaused
+        returns (bool)
+    {
         /// @custom:todo We need to verify a threshold signature to verify the cipher result
         if (!requestExists(_requestId)) {
             revert RequestDoesNotExist();
@@ -187,9 +165,7 @@ abstract contract EncryptionOracle is
         } catch Error(string memory reason) {
             revert OracleResultFailed(reason);
         } catch {
-            revert OracleResultFailed(
-                "Client does not support oracleResult() method"
-            );
+            revert OracleResultFailed("Client does not support oracleResult() method");
         }
     }
 

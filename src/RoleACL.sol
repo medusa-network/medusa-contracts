@@ -29,13 +29,8 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
     // we can't differentiate otherwise
     event NewOracleResult(uint256 requestId, Ciphertext ciphertext);
 
-    function oracleResult(uint256 _requestId, Ciphertext calldata _cipher)
-        external
-    {
-        require(
-            msg.sender == address(oracle),
-            "only oracle can submit results"
-        );
+    function oracleResult(uint256 _requestId, Ciphertext calldata _cipher) external {
+        require(msg.sender == address(oracle), "only oracle can submit results");
         // TODO : some checks ? do we handle pending requests here etc ?
         emit NewOracleResult(_requestId, _cipher);
     }
@@ -59,18 +54,17 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
     function grantRole(bytes32 _role, address)
         public
         view
-        override(AccessControl, IAccessControl)
+        override (AccessControl, IAccessControl)
         onlyRole(getRoleAdmin(_role))
     {
         // TODO check if there are other public functions to restrict
         require(false, "This can not be called - call grantRoleKey");
     }
 
-    function grantRoleKey(
-        bytes32 _role,
-        address _account,
-        G1Point calldata _pubkey
-    ) external onlyRole(getRoleAdmin(_role)) {
+    function grantRoleKey(bytes32 _role, address _account, G1Point calldata _pubkey)
+        external
+        onlyRole(getRoleAdmin(_role))
+    {
         require(_pubkey.x != 0, "public key can't be 0");
         require(_pubkey.y != 0, "public key can't be 0");
         super.grantRole(_role, _account);
@@ -80,18 +74,14 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
     function revokeRole(bytes32 _role, address _account)
         public
         virtual
-        override(AccessControl, IAccessControl)
+        override (AccessControl, IAccessControl)
         onlyRole(getRoleAdmin(_role))
     {
         super.revokeRole(_role, _account);
         delete (addressToKey[_account]);
     }
 
-    function getKeyForAddress(address _account)
-        public
-        view
-        returns (G1Point memory)
-    {
+    function getKeyForAddress(address _account) public view returns (G1Point memory) {
         return addressToKey[_account];
     }
 
