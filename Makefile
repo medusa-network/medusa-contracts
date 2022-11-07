@@ -49,8 +49,10 @@ create_block:; cast send 0x000000000000000000000000000000000000dEaD \
 				--private-key ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
 # Get the distributed key from the completed DKG
-get_key:; cast call 0xa16E02E87b7454126E5E10d957A927A7F5B5d2be \
-			"distributedKey()(uint256,uint256)"
+get_key:; cast call ${DKG_ADDRESS} \
+			"distributedKey()(uint256,uint256)" \
+			--rpc-url arbitrum-goerli
+
 
 # Submit Ciphertext
 submit_ciphertext:; cast send 0xCafac3dD18aC6c6e92c921884f9E4176737C052c \
