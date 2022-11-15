@@ -8,7 +8,9 @@ import {G1Point} from "./Bn128.sol";
 
 /// @notice An enum of supported encryption suites
 /// @dev The format is CURVE_KEYGROUP_ENCRYPTION
-enum Suite {BN254_KEYG1_HGAMAL}
+enum Suite {
+    BN254_KEYG1_HGAMAL
+}
 
 /// @title OracleFactory
 /// @author Cryptonet
@@ -26,7 +28,11 @@ contract OracleFactory is Ownable {
     /// @dev Only the Factory owner can deploy a new oracle
     /// @param _distKey The distributed key previously created by a DKG process
     /// @return The id and address of the new oracle
-    function deployReencryption_BN254_G1_HGAMAL(G1Point calldata _distKey) external onlyOwner returns (address) {
+    function deployReencryption_BN254_G1_HGAMAL(G1Point calldata _distKey)
+        external
+        onlyOwner
+        returns (address)
+    {
         EncryptionOracle oracle;
         oracle = new BN254EncryptionOracle(_distKey);
 
