@@ -174,13 +174,12 @@ contract Playground is BN254EncryptionOracle {
         G1Point calldata p1,
         address addr,
         uint256 expect
-    ) public view returns (uint256) {
-        return uint256(sha256(abi.encodePacked(addr))) % Bn128.r;
-        //uint256 fs = uint256(sha256(abi.encodePacked(p1.x, p1.y))) %
-        //    Bn128.r;
-        //if (fs == expect) {
-        //    return true;
-        //}
-        //revert("invalid transcript result");
+    ) public view returns (bool) {
+        uint256 fs = uint256(sha256(abi.encodePacked(p1.x, p1.y, addr))) %
+            Bn128.r;
+        if (fs == expect) {
+            return true;
+        }
+        revert("invalid transcript result");
     }
 }
