@@ -45,18 +45,11 @@ library Bn128 {
     /// TODO XXX Can't extract that in its own library because then can't instantiate in Typescript correctly
     /// Seems like a linked library problem with typechain.
     function dleqverify(
-        G1Point calldata _rg1,
-        G1Point calldata _rg2,
-        DleqProof calldata _proof,
+        G1Point memory _rg1,
+        G1Point memory _rg2,
+        DleqProof memory _proof,
         uint256 _label
-    )
-        internal
-        view
-        returns (
-            //) internal view returns (G1Point memory) {
-            bool
-        )
-    {
+    ) internal view returns (bool) {
         // w1 = f*G1 + rG1 * e
         G1Point memory w1 = g1Add(
             scalarMultiply(g1(), _proof.f),
@@ -106,7 +99,7 @@ library Bn128 {
         return G1Point(0, 0);
     }
 
-    function g1Equal(G1Point calldata p1, G1Point calldata p2)
+    function g1Equal(G1Point memory p1, G1Point memory p2)
         internal
         view
         returns (bool)

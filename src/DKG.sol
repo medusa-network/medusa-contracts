@@ -13,11 +13,12 @@ error NotRegistered();
 error InvalidSharesCount();
 error InvalidCommitmentsCount();
 error InvalidCommitment(uint256 index);
-enum ComplaintErrors {
+enum ComplaintReturn {
+    ValidComplaint,
     InvalidDealerIdx,
     InvalidHash,
     InvalidDleq,
-    ConsistentShare
+    InvalidConsistentShare
 }
 
 /// @title ThresholdNetwork
@@ -267,29 +268,29 @@ contract DKG is ThresholdNetwork, IDKG {
         external
         onlyRegistered
         onlyPhase(Phase.COMPLAINT)
-        returns (ComplaintErrors)
+        returns (ComplaintReturn)
     {
         // Make sure dealer is well registered
         uint32 complainerIdx = indexOfSender();
         uint32 dealerIdx = addressIndex[dealer];
         if (dealerIdx == 0) {
             evictParticipant(msg.sender, complainerIdx);
-            return ComplaintErrors.InvalidDealerIdx;
+            return ComplaintReturn.InvalidDealerIdx;
         }
         // Compare the hashes compared to bundle provided
         uint256 expectedHash = dealHashes[dealerIdx];
         uint256 givenHash = hashDealBundle(badBundle);
         if (expectedHash != givenHash) {
             evictParticipant(msg.sender, complainerIdx);
-            return ComplaintErrors.InvalidHash;
+            return ComplaintReturn.InvalidHash;
         }
         // Verify the dleq proof:
         // first base is the public key submitted during registration
         // second base is the shared key that complainers is putting here
         // both should have same dlog
-        if (verifyDleqProof(pubkeys[dealer], sharedKey, proof) == false) {
+        if (Bn128.dleqverify(pubkeys[dealer], sharedKey, proof, 0) == false) {
             evictParticipant(msg.sender, complainerIdx);
-            return ComplaintErrors.InvalidDleq;
+            return ComplaintReturn.InvalidDleq;
         }
 
         // Decrypt the share
@@ -310,28 +311,14 @@ contract DKG is ThresholdNetwork, IDKG {
             // for a valid deal. That means the complainer is gonna get excluded.
             // TODO evict complainer here
             evictParticipant(msg.sender, complainerIdx);
-            return ComplaintErrors.ConsistentShare;
+            return ComplaintReturn.InvalidConsistentShare;
         }
 
         // the complaint is valid, i.e. the deal is invalid as the share is not
         // consistent with the polynomial evaluation. We need to evict the dealer.
         evictParticipant(dealer, dealerIdx);
         emit ValidComplaint(msg.sender, 0);
-        return 0;
-    }
-
-    function verifyDleqProof(
-        G1Point calldata _dealerKey,
-        G1Point calldata _sharedKey,
-        DleqProof calldata _proof
-    ) private returns (bool) {
-        return
-            Bn128.dleqverify(
-                _dealerKey,
-                _sharedKey,
-                _proof,
-                "" // TODO have const label
-            );
+        return ComplaintReturn.ValidComplaint;
     }
 
     function evictParticipant(address p, uint32 index) private {
@@ -396,7 +383,6 @@ contract DKG is ThresholdNetwork, IDKG {
                     abi.encodePacked(
                         db.random.x,
                         db.random.y,
-                        db.indices,
                         db.encryptedShares,
                         flatten
                     )

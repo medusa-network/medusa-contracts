@@ -20,7 +20,12 @@ contract DKGTest is Test {
         uint256[] memory encryptedShares;
         G1Point[] memory commitment;
         return
-            DealBundle(Bn128.g1Zero(), indicies, encryptedShares, commitment);
+            DealBundle(Bn128.g1Zero(), encryptedShares, commitment);
+    }
+
+    function randomPoint(uint256 offset) private pure returns (G1Point memory) {
+        uint256 fr = 19542123975320942039841207452351244 + offset;
+        return Bn128.scalarMultiply(Bn128.g1(), fr);
     }
 
     function testRegister() public {
@@ -29,7 +34,7 @@ contract DKGTest is Test {
             address nextParticipant = address(uint160(i + 1));
             factory.addAuthorizedNode(nextParticipant);
             vm.prank(nextParticipant);
-            dkg.registerParticipant(i + 1); // key != 0
+            dkg.registerParticipant(randomPoint(i)); // key != 0
             assertEq(dkg.numberParticipants(), i + 1);
         }
     }
@@ -43,7 +48,7 @@ contract DKGTest is Test {
         address nextParticipant = address(uint160(1));
         vm.prank(nextParticipant);
         vm.expectRevert(NotAuthorized.selector);
-        dkg.registerParticipant(1);
+        dkg.registerParticipant(randomPoint(0));
     }
 
     function testCannotRegisterIfIncorrectPhase() public {
@@ -53,7 +58,7 @@ contract DKGTest is Test {
         vm.roll(dkg.registrationTime());
         vm.prank(nextParticipant);
         vm.expectRevert(InvalidPhase.selector);
-        dkg.registerParticipant(1);
+        dkg.registerParticipant(randomPoint(1));
     }
 
     function testCannotRegisterMoreThanMaxParticipants() public {
@@ -62,7 +67,7 @@ contract DKGTest is Test {
             nextParticipant = address(uint160(i + 1));
             factory.addAuthorizedNode(nextParticipant);
             vm.prank(nextParticipant);
-            dkg.registerParticipant(i + 1); // key != 0
+            dkg.registerParticipant(randomPoint(i + 1)); // key != 0
         }
         nextParticipant = address(uint160(dkg.MAX_PARTICIPANTS()));
         factory.addAuthorizedNode(nextParticipant);
