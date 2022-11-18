@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {Bn128, G1Point} from "./Bn128.sol";
+import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
 import {DKGFactory} from "./DKGFactory.sol";
 import {ArbSys, ARBITRUM_ONE, ARBITRUM_GOERLI} from "./ArbSys.sol";
 
@@ -13,6 +13,12 @@ error NotRegistered();
 error InvalidSharesCount();
 error InvalidCommitmentsCount();
 error InvalidCommitment(uint256 index);
+enum ComplaintErrors {
+    InvalidDealerIdx,
+    InvalidHash,
+    InvalidDleq,
+    ConsistentShare
+}
 
 /// @title ThresholdNetwork
 /// @author Cryptonet
@@ -34,7 +40,6 @@ abstract contract ThresholdNetwork {
 /// @notice A bundle of deals submitted by each participant.
 struct DealBundle {
     G1Point random;
-    uint32[] indices;
     uint256[] encryptedShares;
     G1Point[] commitment;
 }
@@ -51,12 +56,12 @@ interface IDKG {
     /// @param from The address of the participant.
     /// @param index The index of the participant.
     /// @param tmpKey The temporary key of the participant.
-    event NewParticipant(address from, uint32 index, uint256 tmpKey);
+    event NewParticipant(address from, uint32 index, G1Point tmpKey);
 
     /// @notice Emitted when a deal is submitted during the deal phase.
-    /// @param dealerIdx The index of the dealer submitting the deal.
+    /// @param dealer The address of the dealer submitting the deal.
     /// @param bundle The deal bundle submitted by the dealer.
-    event DealBundleSubmitted(uint256 dealerIdx, DealBundle bundle);
+    event DealBundleSubmitted(address dealer, DealBundle bundle);
 
     /// @notice Emitted when a valid complaint is submitted during the complaint phase.
     /// @param from The address of the participant who submitted the complaint.
@@ -94,8 +99,8 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @notice Maps participant address to their index in the DKG
     mapping(address => uint32) private addressIndex;
 
-    /// @notice List of index of the nodes currently registered
-    uint32[] private nodeIndex;
+    /// @notice Maps participant address to the temporary key used for this DKG
+    mapping(address => G1Point) private pubkeys;
 
     /// @notice Number of nodes registered
     /// @dev serves to designate the index
@@ -173,7 +178,11 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @dev Only authorized nodes from the factory can register
     /// @param _tmpKey The temporary key of the participant
     /// @custom:todo make it payable in a super contract
-    function registerParticipant(uint256 _tmpKey) external onlyAuthorized onlyPhase(Phase.REGISTRATION) {
+    function registerParticipant(G1Point memory _tmpKey)
+        external
+        onlyAuthorized
+        onlyPhase(Phase.REGISTRATION)
+    {
         if (nbRegistered >= MAX_PARTICIPANTS) {
             revert ParticipantLimit();
         }
@@ -186,8 +195,8 @@ contract DKG is ThresholdNetwork, IDKG {
         // index will start at 1
         nbRegistered++;
         uint32 index = nbRegistered;
-        nodeIndex.push(index);
         addressIndex[msg.sender] = index;
+        pubkeys[msg.sender] = _tmpKey;
         emit NewParticipant(msg.sender, index, _tmpKey);
     }
 
@@ -204,66 +213,144 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @dev Can only be called by registered nodes while in the deal phase
     /// @param _bundle The deal bundle; a struct containing the random point, the indices of the nodes to which the shares are encrypted,
     /// the encrypted shares and the commitments to the shares
-    function submitDealBundle(DealBundle calldata _bundle) external onlyRegistered onlyPhase(Phase.DEAL) {
+    function submitDealBundle(DealBundle calldata _bundle)
+        external
+        onlyRegistered
+        onlyPhase(Phase.DEAL)
+    {
         uint32 index = indexOfSender();
         // 1. Check he submitted enough encrypted shares
         // We expect the dealer to submit his own too.
-        // TODO : do we have too ?
         if (_bundle.encryptedShares.length != numberParticipants()) {
             revert InvalidSharesCount();
         }
         // 2. Check he submitted enough committed coefficients
-        // TODO Check actual bn128 check on each of them
         uint256 len = threshold();
         if (_bundle.commitment.length != len) {
             revert InvalidCommitmentsCount();
         }
         // 3. Check that commitments are all on the bn128 curve by decompressing
         // them
-        // TODO hash
-        //uint256[] memory compressed = new uint256[](len);
         for (uint256 i = 0; i < len; i++) {
-            // TODO save the addition of those if successful later
-            //comms[i] = Bn128.g1Decompress(bytes32(_commitment[i]));
             if (!_bundle.commitment[i].isG1PointOnCurve()) {
                 revert InvalidCommitment(i);
             }
-            //compressed[i] = uint256(Bn128.g1Compress(_commitment[i]));
         }
-        // 3. Compute and store the hash
-        //bytes32 comm = keccak256(abi.encodePacked(_encrypted_shares,compressed));
-        // TODO check it is not done before
-        //deal_hashes[indexOfSender()] = uint256(comm);
-        // 4. add the key to the aggregated key
+        // 4. Compute and store the hash
+        dealHashes[index] = hashDealBundle(_bundle);
+        // 5. add the key to the aggregated key
+        // Note this is not strictly required but is much easier to do it in contract
+        // rather than having someone else upload the result onchain.
+        // Note this distkey is _not yet_ valid - if this participant submitted
+        // an invalid deal, it will get complained about and "rejected" later on.
+        // His contribution to the public key will get removed. This is done here
+        // in an "optimistic" way.
         distKey = distKey.g1Add(_bundle.commitment[0]);
-        // 5. emit event
-        //emit DealBundleSubmitted(index, _bundle);
-        emitDealBundle(index, _bundle);
+        // 6. emit event so every other participant can pick it up
+        emitDealBundle(msg.sender, _bundle);
     }
 
     /// @notice Submit a complaint against a deal
     /// @dev The complaint is valid if the deal is not valid and the complainer
-    /// has a share of the deal
-    /* /// @param _index The index of the deal to complain against
-    /// @param _encryptedShare The encrypted share of the complainer
-    /// @param _commitment The commitment of the complainer
-    /// @param _deal The deal to complain against */
+    /// has a share of the deal. Note that if the complaint is invalid, it is
+    /// the sender/complainer that is being evicted !
+    /// @param dealer The address of the dealer to complain against
+    /// @param badBundle the deal bundle which is claimed to be invalid
+    /// @param sharedKey the key shared between the recipient and the dealer
     /// @custom:todo Implement
-    function submitComplaintBundle() external onlyRegistered onlyPhase(Phase.COMPLAINT) {
-        // TODO
+    function submitComplaintBundle(
+        address dealer,
+        DealBundle calldata badBundle,
+        G1Point memory sharedKey,
+        DleqProof memory proof
+    )
+        external
+        onlyRegistered
+        onlyPhase(Phase.COMPLAINT)
+        returns (ComplaintErrors)
+    {
+        // Make sure dealer is well registered
+        uint32 complainerIdx = indexOfSender();
+        uint32 dealerIdx = addressIndex[dealer];
+        if (dealerIdx == 0) {
+            evictParticipant(msg.sender, complainerIdx);
+            return ComplaintErrors.InvalidDealerIdx;
+        }
+        // Compare the hashes compared to bundle provided
+        uint256 expectedHash = dealHashes[dealerIdx];
+        uint256 givenHash = hashDealBundle(badBundle);
+        if (expectedHash != givenHash) {
+            evictParticipant(msg.sender, complainerIdx);
+            return ComplaintErrors.InvalidHash;
+        }
+        // Verify the dleq proof:
+        // first base is the public key submitted during registration
+        // second base is the shared key that complainers is putting here
+        // both should have same dlog
+        if (verifyDleqProof(pubkeys[dealer], sharedKey, proof) == false) {
+            evictParticipant(msg.sender, complainerIdx);
+            return ComplaintErrors.InvalidDleq;
+        }
+
+        // Decrypt the share
+        uint256 hashed = uint256(
+            sha256(abi.encodePacked(sharedKey.x, sharedKey.y))
+        );
+        // indices start at value 1 so offset by one when referring in the array
+        uint256 cipher = badBundle.encryptedShares[complainerIdx - 1];
+        uint256 share = hashed ^ cipher;
+        // Verify it is consistent with the polynomial setup by the dealer
+        G1Point memory eval1 = Bn128.public_poly_eval(
+            badBundle.commitment,
+            uint256(complainerIdx)
+        );
+        G1Point memory eval2 = Bn128.scalarMultiply(Bn128.g1(), share);
+        if (Bn128.g1Equal(eval1, eval2) == true) {
+            // the share is as expected, that means the complainer issued a complaint
+            // for a valid deal. That means the complainer is gonna get excluded.
+            // TODO evict complainer here
+            evictParticipant(msg.sender, complainerIdx);
+            return ComplaintErrors.ConsistentShare;
+        }
+
+        // the complaint is valid, i.e. the deal is invalid as the share is not
+        // consistent with the polynomial evaluation. We need to evict the dealer.
+        evictParticipant(dealer, dealerIdx);
         emit ValidComplaint(msg.sender, 0);
+        return 0;
+    }
+
+    function verifyDleqProof(
+        G1Point calldata _dealerKey,
+        G1Point calldata _sharedKey,
+        DleqProof calldata _proof
+    ) private returns (bool) {
+        return
+            Bn128.dleqverify(
+                _dealerKey,
+                _sharedKey,
+                _proof,
+                "" // TODO have const label
+            );
+    }
+
+    function evictParticipant(address p, uint32 index) private {
+        delete addressIndex[p];
+        delete dealHashes[index];
+        delete pubkeys[p];
     }
 
     function numberParticipants() public view returns (uint256) {
         return nbRegistered;
     }
 
-    // Returns the list of indexes of QUALIFIED participants at the end of the DKG.
-    function participantIndexes() public view onlyPhase(Phase.DONE) returns (uint32[] memory) {
-        return nodeIndex;
-    }
-
-    function distributedKey() public view override onlyPhase(Phase.DONE) returns (G1Point memory) {
+    function distributedKey()
+        public
+        view
+        override
+        onlyPhase(Phase.DONE)
+        returns (G1Point memory)
+    {
         //return uint256(Bn128.g1Compress(distKey));
         return distKey;
     }
@@ -276,8 +363,8 @@ contract DKG is ThresholdNetwork, IDKG {
         return addressIndex[msg.sender];
     }
 
-    function emitDealBundle(uint32 _index, DealBundle memory _bundle) private {
-        emit DealBundleSubmitted(_index, _bundle);
+    function emitDealBundle(address dealer, DealBundle memory _bundle) private {
+        emit DealBundleSubmitted(dealer, _bundle);
     }
 
     /// @notice returns the current block number of the chain of execution
@@ -288,5 +375,32 @@ contract DKG is ThresholdNetwork, IDKG {
         } else {
             return block.number;
         }
+    }
+
+    /// @notice returns the hash of a deal bundle. Hash is stored at the sharing phase
+    /// and is checked at the complaint phase.
+    function hashDealBundle(DealBundle memory db)
+        public
+        pure
+        returns (uint256)
+    {
+        /// XXX is there no hope of flattening the structs without costs ?
+        /// maybe with for loop over abi.encodePacked(previousEncoding, commit[i]) ?
+        uint256[2][] memory flatten = new uint256[2][](db.commitment.length);
+        for (uint256 i = 0; i < db.commitment.length; i++) {
+            flatten[i] = [db.commitment[i].x, db.commitment[i].y];
+        }
+        return
+            uint256(
+                keccak256(
+                    abi.encodePacked(
+                        db.random.x,
+                        db.random.y,
+                        db.indices,
+                        db.encryptedShares,
+                        flatten
+                    )
+                )
+            );
     }
 }
