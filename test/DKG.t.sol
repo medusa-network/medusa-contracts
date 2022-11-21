@@ -3,18 +3,37 @@ pragma solidity ^0.8.17;
 
 import {DealBundle, IDKG, DKG, NotAuthorized, NotRegistered, AlreadyRegistered, ParticipantLimit, InvalidPhase, InvalidSharesCount, InvalidCommitmentsCount} from "../src/DKG.sol";
 import {DKGFactory} from "../src/DKGFactory.sol";
-import {Bn128, G1Point} from "../src/Bn128.sol";
+import {Bn128, G1Point, DleqProof} from "../src/Bn128.sol";
 import "forge-std/Test.sol";
 
 contract DKGTest is Test {
     DKG private dkg;
     DKGFactory private factory;
     G1Point private p1;
+    FakeDleq private fakeProof;
 
     function setUp() public {
         factory = new DKGFactory();
         dkg = new DKG(factory);
         p1 = randomPoint(1);
+        fakeProof = fakeDleq();
+    }
+
+    struct FakeDleq {
+        G1Point g1;
+        G1Point g2;
+        DleqProof proof;
+    }
+
+    function fakeDleq() public returns (FakeDleq memory) {
+        uint256 f = 21888242871839275222246405745257275088548364400416034343698204186575808495133;
+        uint256 e = 21888242871839275222246405745257275088548364400416034343698204186575808495134;
+        G1Point memory g1 = Bn128.scalarMultiply(Bn128.g1(), f);
+        G1Point memory g2 = Bn128.scalarMultiply(
+            Bn128.scalarMultiply(Bn128.g1(), e),
+            f
+        );
+        return FakeDleq(g1, g2, DleqProof(f, e));
     }
 
     function emptyDealBundle() private pure returns (DealBundle memory) {
@@ -155,19 +174,31 @@ contract DKGTest is Test {
 
     function testCannotSubmitComplaintBundleIfNotRegistered() public {
         address nextParticipant = address(uint160(1));
+        DealBundle memory bundle = emptyDealBundle();
         vm.prank(nextParticipant);
         vm.expectRevert(NotRegistered.selector);
-        dkg.submitComplaintBundle();
+        dkg.submitComplaintBundle(
+            address(uint160(2)),
+            bundle,
+            p1,
+            fakeProof.proof
+        );
     }
 
     function testCannotSubmitComplaintBundleIfInvalidPhase() public {
         address nextParticipant = address(uint160(1));
         factory.addAuthorizedNode(nextParticipant);
         vm.prank(nextParticipant);
-        dkg.registerParticipant(1);
+        dkg.registerParticipant(p1);
         vm.roll(dkg.complaintTime());
         vm.prank(nextParticipant);
+        DealBundle memory bundle = emptyDealBundle();
         vm.expectRevert(InvalidPhase.selector);
-        dkg.submitComplaintBundle();
+        dkg.submitComplaintBundle(
+            address(uint160(2)),
+            bundle,
+            p1,
+            fakeProof.proof
+        );
     }
 }
