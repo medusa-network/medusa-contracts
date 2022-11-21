@@ -154,20 +154,20 @@ contract DKGTest is Test {
     }
 
     function testCannotSubmitComplaintBundleIfNotRegistered() public {
-        //address nextParticipant = address(uint160(1));
-        //vm.prank(nextParticipant);
-        //vm.expectRevert(NotRegistered.selector);
-        //dkg.submitComplaintBundle();
+        address nextParticipant = address(uint160(1));
+        vm.prank(nextParticipant);
+        vm.expectRevert(NotRegistered.selector);
+        dkg.submitComplaintBundle();
     }
 
     function testCannotSubmitComplaintBundleIfInvalidPhase() public {
-        //address nextParticipant = address(uint160(1));
-        //factory.addAuthorizedNode(nextParticipant);
-        //vm.prank(nextParticipant);
-        //dkg.registerParticipant(1);
-        //vm.roll(dkg.complaintTime());
-        //vm.prank(nextParticipant);
-        //vm.expectRevert(InvalidPhase.selector);
-        //dkg.submitComplaintBundle();
+        address nextParticipant = address(uint160(1));
+        factory.addAuthorizedNode(nextParticipant);
+        vm.prank(nextParticipant);
+        dkg.registerParticipant(1);
+        vm.roll(dkg.complaintTime());
+        vm.prank(nextParticipant);
+        vm.expectRevert(InvalidPhase.selector);
+        dkg.submitComplaintBundle();
     }
 }
