@@ -164,13 +164,7 @@ contract DKGTest is Test {
         dkg.submitDealBundle(bundle);
     }
 
-    function testCannotSubmitDealBundleWithInvalidCommitment() public {
-        // TODO
-    }
-
-    function testSubmitComplaintBundle() public {
-        // TODO
-    }
+    
 
     function testCannotSubmitComplaintBundleIfNotRegistered() public {
         address nextParticipant = address(uint160(1));
@@ -200,5 +194,17 @@ contract DKGTest is Test {
             p1,
             fakeProof.proof
         );
+    }
+
+    function testCannotSubmitCOmplaintWithInvalidBundle() public {
+        address nextParticipant = address(uint160(1));
+        factory.addAuthorizedNode(nextParticipant);
+        vm.prank(nextParticipant);
+        dkg.registerParticipant(p1);
+        // go to DKG phase by going to the time registration ends
+        vm.roll(dkg.registrationTime());
+        vm.prank(nextParticipant);
+        DealBundle memory bundle = emptyDealBundle();
+        
     }
 }

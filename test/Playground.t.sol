@@ -47,9 +47,7 @@ contract PlaygroundTest is Test {
         assertEq(this.verifyDleq(fake.g1, fake.g2, fake.proof, 0), false);
     }
 
-    function testPairingVerification() public {
-        
-    }
+    function testPairingVerification() public {}
 
     function testShaThis() public {
         client.shathis(Bn128.g1(), address(this), Bn128.g1());

@@ -86,6 +86,9 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @notice Each phase lasts 10 blocks
     uint8 public constant BLOCKS_PER_PHASE = 10;
 
+    /// @notice The final label to use in the DLEQ transcript
+    uint256 public constant COMPLAINT_LABEL = 1337;
+
     /// @notice The block number at which this contract is deployed
     uint256 public initTime;
 
@@ -288,7 +291,14 @@ contract DKG is ThresholdNetwork, IDKG {
         // first base is the public key submitted during registration
         // second base is the shared key that complainers is putting here
         // both should have same dlog
-        if (Bn128.dleqverify(pubkeys[dealer], sharedKey, proof, 0) == false) {
+        if (
+            Bn128.dleqverify(
+                pubkeys[dealer],
+                sharedKey,
+                proof,
+                COMPLAINT_LABEL
+            ) == false
+        ) {
             evictParticipant(msg.sender, complainerIdx);
             return ComplaintReturn.InvalidDleq;
         }
