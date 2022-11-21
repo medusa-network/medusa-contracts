@@ -19,11 +19,10 @@ contract DKGTest is Test {
         uint32[] memory indicies;
         uint256[] memory encryptedShares;
         G1Point[] memory commitment;
-        return
-            DealBundle(Bn128.g1Zero(), encryptedShares, commitment);
+        return DealBundle(Bn128.g1Zero(), encryptedShares, commitment);
     }
 
-    function randomPoint(uint256 offset) private pure returns (G1Point memory) {
+    function randomPoint(uint256 offset) private view returns (G1Point memory) {
         uint256 fr = 19542123975320942039841207452351244 + offset;
         return Bn128.scalarMultiply(Bn128.g1(), fr);
     }
@@ -73,7 +72,7 @@ contract DKGTest is Test {
         factory.addAuthorizedNode(nextParticipant);
         vm.prank(nextParticipant);
         vm.expectRevert(ParticipantLimit.selector);
-        dkg.registerParticipant(1);
+        dkg.registerParticipant(randomPoint(1));
     }
 
     function testCannotRegisterMoreThanOnce() public {
@@ -81,11 +80,11 @@ contract DKGTest is Test {
         factory.addAuthorizedNode(nextParticipant);
 
         vm.prank(nextParticipant);
-        dkg.registerParticipant(1);
+        dkg.registerParticipant(randomPoint(1));
 
         vm.expectRevert(AlreadyRegistered.selector);
         vm.prank(nextParticipant);
-        dkg.registerParticipant(10);
+        dkg.registerParticipant(randomPoint(10));
     }
 
     function testSubmitDealBundle() public {
@@ -104,7 +103,7 @@ contract DKGTest is Test {
         address nextParticipant = address(uint160(1));
         factory.addAuthorizedNode(nextParticipant);
         vm.prank(nextParticipant);
-        dkg.registerParticipant(1);
+        dkg.registerParticipant(randomPoint(1));
 
         vm.roll(dkg.dealTime());
         vm.prank(nextParticipant);
@@ -116,7 +115,7 @@ contract DKGTest is Test {
         address nextParticipant = address(uint160(1));
         factory.addAuthorizedNode(nextParticipant);
         vm.prank(nextParticipant);
-        dkg.registerParticipant(1);
+        dkg.registerParticipant(randomPoint(1));
 
         DealBundle memory bundle = emptyDealBundle();
         bundle.encryptedShares = new uint256[](2); // bundle with 2 shares
@@ -131,7 +130,7 @@ contract DKGTest is Test {
         address nextParticipant = address(uint160(1));
         factory.addAuthorizedNode(nextParticipant);
         vm.prank(nextParticipant);
-        dkg.registerParticipant(1);
+        dkg.registerParticipant(randomPoint(1));
 
         DealBundle memory bundle = emptyDealBundle();
         bundle.encryptedShares = new uint256[](1); // bundle with 1 share and 0 commitments

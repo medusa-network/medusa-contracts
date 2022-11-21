@@ -10,6 +10,7 @@ error ParticipantLimit();
 error AlreadyRegistered();
 error NotAuthorized();
 error NotRegistered();
+error InvalidPubkeyRegistration();
 error InvalidSharesCount();
 error InvalidCommitmentsCount();
 error InvalidCommitment(uint256 index);
@@ -101,6 +102,8 @@ contract DKG is ThresholdNetwork, IDKG {
     mapping(address => uint32) private addressIndex;
 
     /// @notice Maps participant address to the temporary key used for this DKG
+    /// They are used during the complaint phase to decrypt a share claimed to
+    /// be invalid.
     mapping(address => G1Point) private pubkeys;
 
     /// @notice Number of nodes registered
@@ -187,11 +190,12 @@ contract DKG is ThresholdNetwork, IDKG {
         if (nbRegistered >= MAX_PARTICIPANTS) {
             revert ParticipantLimit();
         }
-        // TODO check for BN128 subgroup instead
-        //require(_tmpKey != 0, "Invalid key");
-        // TODO check for uniqueness of the key as well
+
         if (addressIndex[msg.sender] != 0) {
             revert AlreadyRegistered();
+        }
+        if (Bn128.isG1PointOnCurve(_tmpKey) != true) {
+            revert InvalidPubkeyRegistration();
         }
         // index will start at 1
         nbRegistered++;
