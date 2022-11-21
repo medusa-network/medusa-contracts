@@ -9,10 +9,12 @@ import "forge-std/Test.sol";
 contract DKGTest is Test {
     DKG private dkg;
     DKGFactory private factory;
+    G1Point private p1;
 
     function setUp() public {
         factory = new DKGFactory();
         dkg = new DKG(factory);
+        p1 = randomPoint(1);
     }
 
     function emptyDealBundle() private pure returns (DealBundle memory) {
@@ -31,9 +33,10 @@ contract DKGTest is Test {
         assertEq(dkg.numberParticipants(), 0);
         for (uint256 i = 0; i < dkg.MAX_PARTICIPANTS(); i++) {
             address nextParticipant = address(uint160(i + 1));
+            G1Point memory nextKey = randomPoint(i + 1);
             factory.addAuthorizedNode(nextParticipant);
             vm.prank(nextParticipant);
-            dkg.registerParticipant(randomPoint(i)); // key != 0
+            dkg.registerParticipant(nextKey);
             assertEq(dkg.numberParticipants(), i + 1);
         }
     }
@@ -47,32 +50,32 @@ contract DKGTest is Test {
         address nextParticipant = address(uint160(1));
         vm.prank(nextParticipant);
         vm.expectRevert(NotAuthorized.selector);
-        dkg.registerParticipant(randomPoint(0));
+        dkg.registerParticipant(p1);
     }
 
     function testCannotRegisterIfIncorrectPhase() public {
         address nextParticipant = address(uint160(1));
         factory.addAuthorizedNode(nextParticipant);
-
         vm.roll(dkg.registrationTime());
         vm.prank(nextParticipant);
         vm.expectRevert(InvalidPhase.selector);
-        dkg.registerParticipant(randomPoint(1));
+        dkg.registerParticipant(p1);
     }
 
     function testCannotRegisterMoreThanMaxParticipants() public {
         address nextParticipant;
         for (uint256 i = 0; i < dkg.MAX_PARTICIPANTS(); i++) {
             nextParticipant = address(uint160(i + 1));
+            G1Point memory p = randomPoint(i + 1);
             factory.addAuthorizedNode(nextParticipant);
             vm.prank(nextParticipant);
-            dkg.registerParticipant(randomPoint(i + 1)); // key != 0
+            dkg.registerParticipant(p);
         }
         nextParticipant = address(uint160(dkg.MAX_PARTICIPANTS()));
         factory.addAuthorizedNode(nextParticipant);
         vm.prank(nextParticipant);
         vm.expectRevert(ParticipantLimit.selector);
-        dkg.registerParticipant(randomPoint(1));
+        dkg.registerParticipant(p1);
     }
 
     function testCannotRegisterMoreThanOnce() public {
@@ -80,11 +83,12 @@ contract DKGTest is Test {
         factory.addAuthorizedNode(nextParticipant);
 
         vm.prank(nextParticipant);
-        dkg.registerParticipant(randomPoint(1));
+        dkg.registerParticipant(p1);
 
+        G1Point memory p2 = randomPoint(10);
         vm.expectRevert(AlreadyRegistered.selector);
         vm.prank(nextParticipant);
-        dkg.registerParticipant(randomPoint(10));
+        dkg.registerParticipant(p2);
     }
 
     function testSubmitDealBundle() public {
@@ -103,7 +107,7 @@ contract DKGTest is Test {
         address nextParticipant = address(uint160(1));
         factory.addAuthorizedNode(nextParticipant);
         vm.prank(nextParticipant);
-        dkg.registerParticipant(randomPoint(1));
+        dkg.registerParticipant(p1);
 
         vm.roll(dkg.dealTime());
         vm.prank(nextParticipant);
@@ -115,7 +119,7 @@ contract DKGTest is Test {
         address nextParticipant = address(uint160(1));
         factory.addAuthorizedNode(nextParticipant);
         vm.prank(nextParticipant);
-        dkg.registerParticipant(randomPoint(1));
+        dkg.registerParticipant(p1);
 
         DealBundle memory bundle = emptyDealBundle();
         bundle.encryptedShares = new uint256[](2); // bundle with 2 shares
@@ -130,7 +134,7 @@ contract DKGTest is Test {
         address nextParticipant = address(uint160(1));
         factory.addAuthorizedNode(nextParticipant);
         vm.prank(nextParticipant);
-        dkg.registerParticipant(randomPoint(1));
+        dkg.registerParticipant(p1);
 
         DealBundle memory bundle = emptyDealBundle();
         bundle.encryptedShares = new uint256[](1); // bundle with 1 share and 0 commitments
