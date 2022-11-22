@@ -19,6 +19,8 @@ contract DKGFactory is Ownable {
     /// @param dkg The address of the deployed DKG
     event NewDKGCreated(address dkg);
 
+    constructor() Ownable() {}
+
     /// @notice Deploys a new DKG
     /// @dev Only the Factory owner can deploy a new DKG
     /// @return The id and address of the new DKG

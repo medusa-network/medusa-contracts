@@ -241,8 +241,13 @@ contract DKG is ThresholdNetwork, IDKG {
                 revert InvalidCommitment(i);
             }
         }
-        // 4. Compute and store the hash
-        dealHashes[index] = hashDealBundle(_bundle);
+
+        // 4. Compute and store the hash if not stored previously
+        uint256 bundleHash = hashDealBundle(_bundle);
+        if (dealHashes[index] != 0) {
+            revert AlreadyRegistered();
+        }
+        dealHashes[index] = bundleHash;
         // 5. add the key to the aggregated key
         // Note this is not strictly required but is much easier to do it in contract
         // rather than having someone else upload the result onchain.

@@ -87,7 +87,7 @@ library Bn128 {
         returns (G1Point memory)
     {
         uint256 xi = index;
-        G1Point memory result = coefficients[0];
+        G1Point memory result = coefficients[coefficients.length - 1];
         for (uint256 i = coefficients.length - 2; i >= 0; i--) {
             result = scalarMultiply(result, xi);
             result = g1Add(coefficients[i], result);
@@ -220,11 +220,11 @@ library Bn128 {
 
     /// @dev Calculates whether the provided number is even or odd.
     /// @return 0x01 if y is an even number and 0x00 if it's odd.
-    function parity(uint256 value) public pure returns (bytes1) {
+    function parity(uint256 value) internal pure returns (bytes1) {
         return bytes32(value)[31] & 0x01;
     }
 
-    function g1() public pure returns (G1Point memory) {
+    function g1() internal pure returns (G1Point memory) {
         return G1Point(g1x, g1y);
     }
 }
