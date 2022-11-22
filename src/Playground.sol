@@ -95,12 +95,9 @@ contract Playground is BN254EncryptionOracle {
         return oracle;
     }
 
-    function submitCiphertextToOracle(Ciphertext calldata _cipher, bytes calldata _link, address _encryptor)
-        public
-        returns (uint256)
-    {
+    function submitCiphertextToOracle(Ciphertext calldata _cipher, address _encryptor) public returns (uint256) {
         require(oracle != address(0), "oracle not deployed");
-        return BN254EncryptionOracle(oracle).submitCiphertext(_cipher, _link, _encryptor);
+        return BN254EncryptionOracle(oracle).submitCiphertext(_cipher, _encryptor);
     }
 
     function verifyDLEQProof(G1Point calldata _rg1, G1Point calldata _rg2, DleqProof calldata _proof, uint256 _label)
