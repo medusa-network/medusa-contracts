@@ -60,14 +60,15 @@ interface IDKG {
     event NewParticipant(address from, uint32 index, G1Point tmpKey);
 
     /// @notice Emitted when a deal is submitted during the deal phase.
-    /// @param dealer The address of the dealer submitting the deal.
+    /// @param dealerIdx The address of the dealer submitting the deal.
     /// @param bundle The deal bundle submitted by the dealer.
-    event DealBundleSubmitted(address dealer, DealBundle bundle);
+    event DealBundleSubmitted(uint32 dealerIdx, DealBundle bundle);
 
-    /// @notice Emitted when a valid complaint is submitted during the complaint phase.
-    /// @param from The address of the participant who submitted the complaint.
-    /// @param evicted The index of the dealer who is evicted from the network.
-    event ValidComplaint(address from, uint32 evicted);
+    /// @notice Emitted when a participant is evicted from the protocol. It can
+    /// happen during any phases.
+    /// @param from The address of the participant who got evicted
+    /// @param index The index of the participant who is evicted from the network.
+    event EvictedParticipant(address from, uint32 index);
 }
 
 /// @title Distributed Key Generation
@@ -251,7 +252,7 @@ contract DKG is ThresholdNetwork, IDKG {
         // in an "optimistic" way.
         distKey = distKey.g1Add(_bundle.commitment[0]);
         // 6. emit event so every other participant can pick it up
-        emitDealBundle(msg.sender, _bundle);
+        emitDealBundle(index, _bundle);
     }
 
     /// @notice Submit a complaint against a deal
@@ -327,14 +328,17 @@ contract DKG is ThresholdNetwork, IDKG {
         // the complaint is valid, i.e. the deal is invalid as the share is not
         // consistent with the polynomial evaluation. We need to evict the dealer.
         evictParticipant(dealer, dealerIdx);
-        emit ValidComplaint(msg.sender, 0);
         return ComplaintReturn.ValidComplaint;
     }
 
+    /// evicts a participant from the qualified set of participants. It emits an
+    /// event giving the index so that offchain nodes can compute the final distributed
+    /// key correctly.
     function evictParticipant(address p, uint32 index) private {
         delete addressIndex[p];
         delete dealHashes[index];
         delete pubkeys[p];
+        emit EvictedParticipant(p, index);
     }
 
     function numberParticipants() public view returns (uint256) {
@@ -360,8 +364,10 @@ contract DKG is ThresholdNetwork, IDKG {
         return addressIndex[msg.sender];
     }
 
-    function emitDealBundle(address dealer, DealBundle memory _bundle) private {
-        emit DealBundleSubmitted(dealer, _bundle);
+    function emitDealBundle(uint32 dealerIdx, DealBundle memory _bundle)
+        private
+    {
+        emit DealBundleSubmitted(dealerIdx, _bundle);
     }
 
     /// @notice returns the current block number of the chain of execution
