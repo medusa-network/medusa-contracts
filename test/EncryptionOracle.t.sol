@@ -8,13 +8,14 @@ import {
     IEncryptionOracle,
     IEncryptionClient,
     RequestDoesNotExist,
-    OracleResultFailed
+    OracleResultFailed,
+    NotRelayer
 } from "../src/EncryptionOracle.sol";
 import {Suite} from "../src/OracleFactory.sol";
 import {G1Point, DleqProof, Bn128} from "../src/Bn128.sol";
 
 contract MockEncryptionOracle is EncryptionOracle {
-    constructor(G1Point memory _distKey) EncryptionOracle(_distKey) {}
+    constructor(G1Point memory _distKey, address _relayer) EncryptionOracle(_distKey, _relayer) {}
 
     function suite() external pure override returns (Suite) {
         return Suite.BN254_KEYG1_HGAMAL;
@@ -37,12 +38,13 @@ contract MockEncryptionClient is IEncryptionClient {
 
 contract EncryptionOracleTest is Test {
     MockEncryptionOracle oracle;
+    address relayer = makeAddr("relayer");
 
-    event NewCiphertext(uint256 indexed id, Ciphertext ciphertext, bytes link, address client);
+    event NewCiphertext(uint256 indexed id, Ciphertext ciphertext, address client);
     event ReencryptionRequest(uint256 indexed cipherId, uint256 requestId, G1Point publicKey, address client);
 
     function setUp() public {
-        oracle = new MockEncryptionOracle(dummyPublicKey());
+        oracle = new MockEncryptionOracle(dummyPublicKey(), relayer);
     }
 
     function dummyCiphertext() private pure returns (Ciphertext memory) {
@@ -88,22 +90,31 @@ contract EncryptionOracleTest is Test {
         assertTrue(oracle.paused());
     }
 
+    function testUpdateRelayer() public {
+        address newRelayer = makeAddr("newRelayer");
+        vm.prank(relayer);
+        oracle.updateRelayer(newRelayer);
+        assertEq(oracle.relayer(), newRelayer);
+    }
+
+    function testCannotUpdateRelayerIfNotRelayer() public {
+        address notRelayer = makeAddr("notRelayer");
+        vm.expectRevert(NotRelayer.selector);
+        vm.prank(notRelayer);
+
+        oracle.updateRelayer(notRelayer);
+        assertEq(oracle.relayer(), relayer);
+    }
+
     function testSubmitCipherText() public {
-        //Ciphertext memory cipher = dummyCiphertext();
-        //vm.expectEmit(true, false, false, true);
-        //emit NewCiphertext(1, cipher, "dummyLink", address(this));
-        //uint256 cipherId = oracle.submitCiphertext(
-        //    cipher,
-        //    "dummyLink",
-        //    address(this)
-        //);
-        //assertEq(cipherId, 1);
-        //cipherId = oracle.submitCiphertext(
-        //    cipher,
-        //    "otherDummyLink",
-        //    address(this)
-        //);
-        //assertEq(cipherId, 2);
+        /// @custom:todo implement DLEQ valid proof for it
+        // Ciphertext memory cipher = dummyCiphertext();
+        // vm.expectEmit(true, false, false, true);
+        // emit NewCiphertext(1, cipher, address(this));
+        // uint256 cipherId = oracle.submitCiphertext(cipher, address(this));
+        // assertEq(cipherId, 1);
+        // cipherId = oracle.submitCiphertext(cipher, address(this));
+        // assertEq(cipherId, 2);
     }
 
     function testRequestReencryption() public {
@@ -131,8 +142,18 @@ contract EncryptionOracleTest is Test {
 
         vm.prank(address(client));
         uint256 requestId = oracle.requestReencryption(randomCipherId, publicKey);
+
+        vm.prank(relayer);
         bool result = oracle.deliverReencryption(requestId, cipher);
         assert(result);
+    }
+
+    function testCannotDeliverReencryptionIfNotRelayer() public {
+        Ciphertext memory cipher = dummyCiphertext();
+        uint256 randomRequestId = 123312;
+
+        vm.expectRevert(NotRelayer.selector);
+        oracle.deliverReencryption(randomRequestId, cipher);
     }
 
     function testCannotDeliverReencryptionIfRequestDoesNotExist() public {
@@ -140,6 +161,7 @@ contract EncryptionOracleTest is Test {
         uint256 randomRequestId = 123312;
 
         vm.expectRevert(RequestDoesNotExist.selector);
+        vm.prank(relayer);
         oracle.deliverReencryption(randomRequestId, cipher);
     }
 
@@ -153,6 +175,7 @@ contract EncryptionOracleTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(OracleResultFailed.selector, "Client does not support oracleResult() method")
         );
+        vm.prank(relayer);
         oracle.deliverReencryption(requestId, cipher);
     }
 
@@ -167,6 +190,7 @@ contract EncryptionOracleTest is Test {
         vm.prank(address(client));
         uint256 requestId = oracle.requestReencryption(randomCipherId, publicKey);
         vm.expectRevert(abi.encodeWithSelector(OracleResultFailed.selector, "I messed up"));
+        vm.prank(relayer);
         oracle.deliverReencryption(requestId, cipher);
     }
 
