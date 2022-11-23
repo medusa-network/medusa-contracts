@@ -21,7 +21,7 @@ contract Playground is BN254EncryptionOracle {
 
     /*altbn128.G1Point private acc2;*/
 
-    constructor() BN254EncryptionOracle(Bn128.g1Zero()) {
+    constructor() BN254EncryptionOracle(Bn128.g1Zero(), address(0)) {
         accumulator = Bn128.g1Zero();
         /*acc2 = altbn128.P1();*/
         /*acc2.X = 0;*/
@@ -89,8 +89,11 @@ contract Playground is BN254EncryptionOracle {
         return s;
     }
 
-    function deployOracle(G1Point memory distkey) public returns (address) {
-        BN254EncryptionOracle _oracle = new BN254EncryptionOracle(distkey);
+    function deployOracle(G1Point memory distkey, address relayer) public returns (address) {
+        BN254EncryptionOracle _oracle = new BN254EncryptionOracle(
+            distkey,
+            relayer
+        );
         oracle = address(_oracle);
         return oracle;
     }

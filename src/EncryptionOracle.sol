@@ -58,6 +58,9 @@ error OracleResultFailed(string errorMsg);
 /// to another.
 error InvalidCiphertextProof();
 
+/// @notice Reverts when an EOA who is not the relayer tries to deliver a reencryption result
+error NotRelayer();
+
 /// @title An abstract EncryptionOracle that receives requests and posts results for reencryption
 /// @notice You must implement your encryption suite when inheriting from this contract
 /// @dev DOES NOT currently validate reencryption results OR implement fees for the medusa oracle network
@@ -67,6 +70,9 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     struct PendingRequest {
         address client;
     }
+
+    /// @notice relayer that is trusted to deliver reencryption results
+    address public relayer;
 
     /// @notice pendingRequests tracks the reencryption requests
     /// @dev We use this to determine the client to callback with the result
@@ -78,13 +84,21 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     /// @notice counter to derive unique nonces for each reencryption request
     uint256 private requestNonce = 0;
 
+    modifier onlyRelayer() {
+        if (msg.sender != relayer) revert NotRelayer();
+        _;
+    }
+
     /// @notice Create a new oracle contract with a distributed public key
     /// @dev The distributed key is created by an on-chain DKG process
     /// @dev Verify the key by checking all DKG contracts deployed by Medusa operators
     /// @notice The public key corresponding to the distributed private key registered for this contract
     /// @dev This is passed in by the OracleFactory. Corresponds to an x-y point on an elliptic curve
     /// @param _distKey An x-y point representing a public key previously created by medusa nodes
-    constructor(G1Point memory _distKey) ThresholdNetwork(_distKey) {}
+    /// @param _relayer that is trusted to deliver reencryption results
+    constructor(G1Point memory _distKey, address _relayer) ThresholdNetwork(_distKey) {
+        relayer = _relayer;
+    }
 
     function pause() external onlyOwner {
         _pause();
@@ -138,6 +152,7 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     function deliverReencryption(uint256 _requestId, Ciphertext calldata _cipher)
         external
         whenNotPaused
+        onlyRelayer
         returns (bool)
     {
         /// @custom:todo We need to verify a threshold signature to verify the cipher result
@@ -154,6 +169,13 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
         } catch {
             revert OracleResultFailed("Client does not support oracleResult() method");
         }
+    }
+
+    /// @notice The relayer updates the relayer address
+    /// @param _newRelayer The address of the new relayer
+    function updateRelayer(address _newRelayer) external whenNotPaused onlyRelayer {
+        /// @custom:todo Should the owner update the relayer instead? If so, we should call this function from the OracleFactory
+        relayer = _newRelayer;
     }
 
     function newCipherId() private returns (uint256) {
