@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import "forge-std/Test.sol";
 import {
     Ciphertext,
+    PendingRequest,
     EncryptionOracle,
     IEncryptionOracle,
     IEncryptionClient,
@@ -36,12 +37,26 @@ contract MockEncryptionClient is IEncryptionClient {
     }
 }
 
+contract MockReentrantRelayer {
+    receive() external payable {
+        IEncryptionOracle oracle = IEncryptionOracle(msg.sender);
+        uint256 requestId = 1;
+        (, uint96 gasReimbursement) = oracle.pendingRequests(requestId);
+
+        // While the oracle's balance is greater than the request's gas reimbursement,
+        // keep calling oracle.deliverReencryption until the oracle's funds are drained.
+        while (msg.sender.balance >= gasReimbursement) {
+            oracle.deliverReencryption(requestId, Ciphertext(G1Point(1, 2), 3, G1Point(4, 5), DleqProof(6, 7)));
+        }
+    }
+}
+
 contract EncryptionOracleTest is Test {
     MockEncryptionOracle oracle;
     address relayer = makeAddr("relayer");
 
     event NewCiphertext(uint256 indexed id, Ciphertext ciphertext, address client);
-    event ReencryptionRequest(uint256 indexed cipherId, uint256 requestId, G1Point publicKey, address client);
+    event ReencryptionRequest(uint256 indexed cipherId, uint256 requestId, G1Point publicKey, PendingRequest request);
 
     function setUp() public {
         oracle = new MockEncryptionOracle(dummyPublicKey(), relayer);
@@ -120,16 +135,17 @@ contract EncryptionOracleTest is Test {
     function testRequestReencryption() public {
         G1Point memory publicKey = dummyPublicKey();
         uint256 randomCipherId = 123312;
+        uint96 gasReimbursement = 1 ether;
 
         vm.expectEmit(true, false, false, true);
-        emit ReencryptionRequest(randomCipherId, 1, publicKey, address(this));
-        uint256 requestId = oracle.requestReencryption(randomCipherId, publicKey);
+        emit ReencryptionRequest(randomCipherId, 1, publicKey, PendingRequest(address(this), gasReimbursement));
+        uint256 requestId = oracle.requestReencryption{value: gasReimbursement}(randomCipherId, publicKey);
         assertEq(requestId, 1);
 
         uint256 otherRandomCipherId = 45687456;
         vm.expectEmit(true, false, false, true);
-        emit ReencryptionRequest(otherRandomCipherId, 2, publicKey, address(this));
-        requestId = oracle.requestReencryption(otherRandomCipherId, publicKey);
+        emit ReencryptionRequest(otherRandomCipherId, 2, publicKey, PendingRequest(address(this), gasReimbursement));
+        requestId = oracle.requestReencryption{value: gasReimbursement}(otherRandomCipherId, publicKey);
         assertEq(requestId, 2);
     }
 
@@ -138,14 +154,18 @@ contract EncryptionOracleTest is Test {
 
         G1Point memory publicKey = dummyPublicKey();
         uint256 randomCipherId = 123312;
+        uint96 gasReimbursement = 1 ether;
         MockEncryptionClient client = new MockEncryptionClient(false);
+        vm.deal(address(client), gasReimbursement);
 
         vm.prank(address(client));
-        uint256 requestId = oracle.requestReencryption(randomCipherId, publicKey);
+        uint256 requestId = oracle.requestReencryption{value: gasReimbursement}(randomCipherId, publicKey);
 
+        uint256 relayerBalanceBefore = relayer.balance;
         vm.prank(relayer);
         bool result = oracle.deliverReencryption(requestId, cipher);
         assert(result);
+        assert(relayer.balance == relayerBalanceBefore + gasReimbursement);
     }
 
     function testCannotDeliverReencryptionIfNotRelayer() public {
@@ -192,6 +212,30 @@ contract EncryptionOracleTest is Test {
         vm.expectRevert(abi.encodeWithSelector(OracleResultFailed.selector, "I messed up"));
         vm.prank(relayer);
         oracle.deliverReencryption(requestId, cipher);
+    }
+
+    function testCannotDeliverReencryptionWithReentrantAttack() public {
+        MockReentrantRelayer reentrantRelayer = new MockReentrantRelayer();
+        oracle = new MockEncryptionOracle(
+            dummyPublicKey(),
+            address(reentrantRelayer)
+        );
+        Ciphertext memory cipher = dummyCiphertext();
+
+        G1Point memory publicKey = dummyPublicKey();
+        uint256 randomCipherId = 123312;
+        uint96 gasReimbursement = 1 ether;
+        MockEncryptionClient client = new MockEncryptionClient(false);
+        vm.deal(address(client), gasReimbursement);
+
+        vm.prank(address(client));
+        uint256 requestId = oracle.requestReencryption{value: gasReimbursement}(randomCipherId, publicKey);
+
+        uint256 relayerBalanceBefore = relayer.balance;
+        vm.expectRevert(abi.encodeWithSelector(OracleResultFailed.selector, "Failed to send gas reimbursement"));
+        vm.prank(address(reentrantRelayer));
+        oracle.deliverReencryption(requestId, cipher);
+        assert(relayer.balance == relayerBalanceBefore);
     }
 
     function testDistributedKey() public {

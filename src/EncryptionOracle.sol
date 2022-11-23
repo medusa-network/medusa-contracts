@@ -16,6 +16,14 @@ struct Ciphertext {
     DleqProof dleq;
 }
 
+/// @notice A pending reencryption request
+/// @dev client client's address to callback with a response
+/// @dev gasReimbursement the amount of native currency to reimburse the relayer for gas to submit a result onchain
+struct PendingRequest {
+    address client; // 20 bytes ---------- 32 bytes packed; the entire struct fits in 1 storage slot
+    uint96 gasReimbursement; // 12 bytes |
+}
+
 interface IEncryptionClient {
     /// @notice Callback to client contract when medusa posts a result
     /// @dev Implement in client contracts of medusa
@@ -25,7 +33,9 @@ interface IEncryptionClient {
 }
 
 interface IEncryptionOracle {
-    function requestReencryption(uint256 _cipherId, G1Point calldata _publickey) external returns (uint256);
+    function pendingRequests(uint256 _requestId) external returns (address, uint96);
+
+    function requestReencryption(uint256 _cipherId, G1Point calldata _publickey) external payable returns (uint256);
 
     /// @notice submit a ciphertext and has been created by the encryptor address.
     /// The ciphertext proof is checked and if correct, will be signalled to Medusa.
@@ -44,7 +54,7 @@ interface IEncryptionOracle {
 
     /// @notice Emitted when a new request is sent to medusa
     /// @dev Requests can be sent by clients that do not own the cipher text; must verify the request off-chain
-    event ReencryptionRequest(uint256 indexed cipherId, uint256 requestId, G1Point publicKey, address client);
+    event ReencryptionRequest(uint256 indexed cipherId, uint256 requestId, G1Point publicKey, PendingRequest request);
 }
 
 /// @notice Reverts when delivering a response for a non-existent request
@@ -65,18 +75,12 @@ error NotRelayer();
 /// @notice You must implement your encryption suite when inheriting from this contract
 /// @dev DOES NOT currently validate reencryption results OR implement fees for the medusa oracle network
 abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownable, Pausable {
-    /// @notice A pending reencryption request
-    /// @dev client client's address to callback with a response
-    struct PendingRequest {
-        address client;
-    }
-
     /// @notice relayer that is trusted to deliver reencryption results
     address public relayer;
 
     /// @notice pendingRequests tracks the reencryption requests
-    /// @dev We use this to determine the client to callback with the result
-    mapping(uint256 => PendingRequest) private pendingRequests;
+    /// @dev We use this to determine the client to callback with the result and to store the gas reimbursement paid by the client
+    mapping(uint256 => PendingRequest) public pendingRequests;
 
     /// @notice counter to derive unique nonces for each ciphertext
     uint256 private cipherNonce = 0;
@@ -92,9 +96,7 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     /// @notice Create a new oracle contract with a distributed public key
     /// @dev The distributed key is created by an on-chain DKG process
     /// @dev Verify the key by checking all DKG contracts deployed by Medusa operators
-    /// @notice The public key corresponding to the distributed private key registered for this contract
-    /// @dev This is passed in by the OracleFactory. Corresponds to an x-y point on an elliptic curve
-    /// @param _distKey An x-y point representing a public key previously created by medusa nodes
+    /// @param _distKey An (x, y) point on an elliptic curve representing a public key previously created by medusa nodes
     /// @param _relayer that is trusted to deliver reencryption results
     constructor(G1Point memory _distKey, address _relayer) ThresholdNetwork(_distKey) {
         relayer = _relayer;
@@ -134,13 +136,15 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     /// @custom:todo Payable; users pay for the medusa network somehow (oracle gas + platform fee)
     function requestReencryption(uint256 _cipherId, G1Point calldata _publicKey)
         external
+        payable
         whenNotPaused
         returns (uint256)
     {
         /// @custom:todo check correct key
         uint256 requestId = newRequestId();
-        pendingRequests[requestId] = PendingRequest(msg.sender);
-        emit ReencryptionRequest(_cipherId, requestId, _publicKey, msg.sender);
+        PendingRequest memory pr = PendingRequest(msg.sender, uint96(msg.value));
+        pendingRequests[requestId] = pr;
+        emit ReencryptionRequest(_cipherId, requestId, _publicKey, pr);
         return requestId;
     }
 
@@ -162,6 +166,13 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
         PendingRequest memory pr = pendingRequests[_requestId];
         delete pendingRequests[_requestId];
         IEncryptionClient client = IEncryptionClient(pr.client);
+
+        // Note: This should be safe from reentrancy attacks because we delete the pending request before paying/calling the relayer
+        (bool sent,) = msg.sender.call{value: pr.gasReimbursement}("");
+        if (!sent) {
+            revert OracleResultFailed("Failed to send gas reimbursement");
+        }
+
         try client.oracleResult(_requestId, _cipher) {
             return true;
         } catch Error(string memory reason) {
