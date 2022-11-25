@@ -13,6 +13,7 @@ error NotRegistered();
 error InvalidSharesCount();
 error InvalidCommitmentsCount();
 error InvalidCommitment(uint256 index);
+
 enum ComplaintReturn {
     ValidComplaint,
     InvalidDealerIdx,
@@ -40,7 +41,6 @@ abstract contract ThresholdNetwork {
 
 /// @notice A bundle of deals submitted by each participant.
 struct DealBundle {
-    G1Point random;
     uint256[] encryptedShares;
     G1Point[] commitment;
 }
@@ -183,11 +183,7 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @dev Only authorized nodes from the factory can register
     /// @param _tmpKey The temporary key of the participant
     /// @custom:todo make it payable in a super contract
-    function registerParticipant(G1Point memory _tmpKey)
-        external
-        onlyAuthorized
-        onlyPhase(Phase.REGISTRATION)
-    {
+    function registerParticipant(G1Point memory _tmpKey) external onlyAuthorized onlyPhase(Phase.REGISTRATION) {
         if (nbRegistered >= MAX_PARTICIPANTS) {
             revert ParticipantLimit();
         }
@@ -218,11 +214,7 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @dev Can only be called by registered nodes while in the deal phase
     /// @param _bundle The deal bundle; a struct containing the random point, the indices of the nodes to which the shares are encrypted,
     /// the encrypted shares and the commitments to the shares
-    function submitDealBundle(DealBundle calldata _bundle)
-        external
-        onlyRegistered
-        onlyPhase(Phase.DEAL)
-    {
+    function submitDealBundle(DealBundle calldata _bundle) external onlyRegistered onlyPhase(Phase.DEAL) {
         uint32 index = indexOfSender();
         // 1. Check he submitted enough encrypted shares
         // We expect the dealer to submit his own too.
@@ -273,12 +265,7 @@ contract DKG is ThresholdNetwork, IDKG {
         DealBundle calldata badBundle,
         G1Point memory sharedKey,
         DleqProof memory proof
-    )
-        external
-        onlyRegistered
-        onlyPhase(Phase.COMPLAINT)
-        returns (ComplaintReturn)
-    {
+    ) external onlyRegistered onlyPhase(Phase.COMPLAINT) returns (ComplaintReturn) {
         // Make sure dealer is well registered
         uint32 complainerIdx = indexOfSender();
         uint32 dealerIdx = addressIndex[dealer];
@@ -297,30 +284,18 @@ contract DKG is ThresholdNetwork, IDKG {
         // first base is the public key submitted during registration
         // second base is the shared key that complainers is putting here
         // both should have same dlog
-        if (
-            Bn128.dleqverify(
-                pubkeys[dealer],
-                sharedKey,
-                proof,
-                COMPLAINT_LABEL
-            ) == false
-        ) {
+        if (Bn128.dleqverify(pubkeys[dealer], sharedKey, proof, COMPLAINT_LABEL) == false) {
             evictParticipant(msg.sender, complainerIdx);
             return ComplaintReturn.InvalidDleq;
         }
 
         // Decrypt the share
-        uint256 hashed = uint256(
-            sha256(abi.encodePacked(sharedKey.x, sharedKey.y))
-        );
+        uint256 hashed = uint256(sha256(abi.encodePacked(sharedKey.x, sharedKey.y)));
         // indices start at value 1 so offset by one when referring in the array
         uint256 cipher = badBundle.encryptedShares[complainerIdx - 1];
         uint256 share = hashed ^ cipher;
         // Verify it is consistent with the polynomial setup by the dealer
-        G1Point memory eval1 = Bn128.public_poly_eval(
-            badBundle.commitment,
-            uint256(complainerIdx)
-        );
+        G1Point memory eval1 = Bn128.public_poly_eval(badBundle.commitment, uint256(complainerIdx));
         G1Point memory eval2 = Bn128.scalarMultiply(Bn128.g1(), share);
         if (Bn128.g1Equal(eval1, eval2) == true) {
             // the share is as expected, that means the complainer issued a complaint
@@ -350,13 +325,7 @@ contract DKG is ThresholdNetwork, IDKG {
         return nbRegistered;
     }
 
-    function distributedKey()
-        public
-        view
-        override
-        onlyPhase(Phase.DONE)
-        returns (G1Point memory)
-    {
+    function distributedKey() public view override onlyPhase(Phase.DONE) returns (G1Point memory) {
         //return uint256(Bn128.g1Compress(distKey));
         return distKey;
     }
@@ -369,9 +338,7 @@ contract DKG is ThresholdNetwork, IDKG {
         return addressIndex[msg.sender];
     }
 
-    function emitDealBundle(uint32 dealerIdx, DealBundle memory _bundle)
-        private
-    {
+    function emitDealBundle(uint32 dealerIdx, DealBundle memory _bundle) private {
         emit DealBundleSubmitted(dealerIdx, _bundle);
     }
 
@@ -387,27 +354,13 @@ contract DKG is ThresholdNetwork, IDKG {
 
     /// @notice returns the hash of a deal bundle. Hash is stored at the sharing phase
     /// and is checked at the complaint phase.
-    function hashDealBundle(DealBundle memory db)
-        public
-        pure
-        returns (uint256)
-    {
+    function hashDealBundle(DealBundle memory db) public pure returns (uint256) {
         /// XXX is there no hope of flattening the structs without costs ?
         /// maybe with for loop over abi.encodePacked(previousEncoding, commit[i]) ?
         uint256[2][] memory flatten = new uint256[2][](db.commitment.length);
         for (uint256 i = 0; i < db.commitment.length; i++) {
             flatten[i] = [db.commitment[i].x, db.commitment[i].y];
         }
-        return
-            uint256(
-                keccak256(
-                    abi.encodePacked(
-                        db.random.x,
-                        db.random.y,
-                        db.encryptedShares,
-                        flatten
-                    )
-                )
-            );
+        return uint256(keccak256(abi.encodePacked(db.encryptedShares, flatten)));
     }
 }

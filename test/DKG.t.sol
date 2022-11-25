@@ -40,7 +40,7 @@ contract DKGTest is Test {
         uint32[] memory indicies;
         uint256[] memory encryptedShares;
         G1Point[] memory commitment;
-        return DealBundle(Bn128.g1Zero(), encryptedShares, commitment);
+        return DealBundle(encryptedShares, commitment);
     }
 
     function randomPoint(uint256 offset) private view returns (G1Point memory) {
@@ -164,8 +164,6 @@ contract DKGTest is Test {
         dkg.submitDealBundle(bundle);
     }
 
-    
-
     function testCannotSubmitComplaintBundleIfNotRegistered() public {
         address nextParticipant = address(uint160(1));
         DealBundle memory bundle = emptyDealBundle();
@@ -205,6 +203,5 @@ contract DKGTest is Test {
         vm.roll(dkg.registrationTime());
         vm.prank(nextParticipant);
         DealBundle memory bundle = emptyDealBundle();
-        
     }
 }

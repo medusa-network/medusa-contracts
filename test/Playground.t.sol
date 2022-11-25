@@ -25,19 +25,14 @@ contract PlaygroundTest is Test {
         uint256 f = 21888242871839275222246405745257275088548364400416034343698204186575808495133;
         uint256 e = 21888242871839275222246405745257275088548364400416034343698204186575808495134;
         G1Point memory g1 = Bn128.scalarMultiply(Bn128.g1(), f);
-        G1Point memory g2 = Bn128.scalarMultiply(
-            Bn128.scalarMultiply(Bn128.g1(), e),
-            f
-        );
+        G1Point memory g2 = Bn128.scalarMultiply(Bn128.scalarMultiply(Bn128.g1(), e), f);
         return FakeDleq(g1, g2, DleqProof(f, e));
     }
 
-    function verifyDleq(
-        G1Point calldata g1,
-        G1Point calldata g2,
-        DleqProof calldata proof,
-        uint256 label
-    ) public returns (bool) {
+    function verifyDleq(G1Point calldata g1, G1Point calldata g2, DleqProof calldata proof, uint256 label)
+        public
+        returns (bool)
+    {
         return Bn128.dleqverify(g1, g2, proof, label);
     }
 
