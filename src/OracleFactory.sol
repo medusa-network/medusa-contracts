@@ -51,4 +51,10 @@ contract OracleFactory is Ownable {
         EncryptionOracle oracle = EncryptionOracle(_oracle);
         oracle.unpause();
     }
+
+    function updateRelayer(address _oracle, address _newRelayer) public onlyOwner {
+        require(oracles[_oracle], "no oracle at this address registered");
+        EncryptionOracle oracle = EncryptionOracle(_oracle);
+        oracle.updateRelayer(_newRelayer);
+    }
 }

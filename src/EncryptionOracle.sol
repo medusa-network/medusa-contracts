@@ -70,6 +70,8 @@ error InvalidCiphertextProof();
 
 /// @notice Reverts when an EOA who is not the relayer tries to deliver a reencryption result
 error NotRelayer();
+/// @notice Reverts when someone who is not the relayer or the owner tries to update the relayer
+error NotRelayerOrOwner();
 
 /// @title An abstract EncryptionOracle that receives requests and posts results for reencryption
 /// @notice You must implement your encryption suite when inheriting from this contract
@@ -90,6 +92,13 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
 
     modifier onlyRelayer() {
         if (msg.sender != relayer) revert NotRelayer();
+        _;
+    }
+
+    modifier onlyRelayerOrOwner() {
+        if (msg.sender != relayer && msg.sender != owner()) {
+            revert NotRelayerOrOwner();
+        }
         _;
     }
 
@@ -182,10 +191,9 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
         }
     }
 
-    /// @notice The relayer updates the relayer address
+    /// @notice The relayer or owner updates the relayer address
     /// @param _newRelayer The address of the new relayer
-    function updateRelayer(address _newRelayer) external whenNotPaused onlyRelayer {
-        /// @custom:todo Should the owner update the relayer instead? If so, we should call this function from the OracleFactory
+    function updateRelayer(address _newRelayer) external whenNotPaused onlyRelayerOrOwner {
         relayer = _newRelayer;
     }
 

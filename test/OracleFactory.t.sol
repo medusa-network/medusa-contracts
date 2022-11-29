@@ -69,4 +69,23 @@ contract OracleFactoryTest is Test {
         factory.unpauseOracle(oracleAddress);
         assertTrue(EncryptionOracle(oracleAddress).paused());
     }
+
+    function testUpdateRelayer() public {
+        address oracleAddress = factory.deployReencryption_BN254_G1_HGAMAL(Bn128.g1Zero(), relayer);
+        address newRelayer = makeAddr("newRelayer");
+
+        factory.updateRelayer(oracleAddress, newRelayer);
+        assert(EncryptionOracle(oracleAddress).relayer() == newRelayer);
+    }
+
+    function testCannotUpdateRelayerIfNotOwner() public {
+        address oracleAddress = factory.deployReencryption_BN254_G1_HGAMAL(Bn128.g1Zero(), relayer);
+        address notOwner = makeAddr("notOwner");
+        address newRelayer = makeAddr("newRelayer");
+
+        vm.expectRevert("Ownable: caller is not the owner");
+        hoax(notOwner);
+        factory.updateRelayer(oracleAddress, newRelayer);
+        assert(EncryptionOracle(oracleAddress).relayer() == relayer);
+    }
 }

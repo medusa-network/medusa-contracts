@@ -10,7 +10,8 @@ import {
     IEncryptionClient,
     RequestDoesNotExist,
     OracleResultFailed,
-    NotRelayer
+    NotRelayer,
+    NotRelayerOrOwner
 } from "../src/EncryptionOracle.sol";
 import {Suite} from "../src/OracleFactory.sol";
 import {G1Point, DleqProof, Bn128} from "../src/Bn128.sol";
@@ -110,14 +111,19 @@ contract EncryptionOracleTest is Test {
         vm.prank(relayer);
         oracle.updateRelayer(newRelayer);
         assertEq(oracle.relayer(), newRelayer);
+
+        address otherNewRelayer = makeAddr("otherNewRelayer");
+        vm.prank(oracle.owner());
+        oracle.updateRelayer(otherNewRelayer);
+        assertEq(oracle.relayer(), otherNewRelayer);
     }
 
-    function testCannotUpdateRelayerIfNotRelayer() public {
-        address notRelayer = makeAddr("notRelayer");
-        vm.expectRevert(NotRelayer.selector);
-        vm.prank(notRelayer);
+    function testCannotUpdateRelayerIfNotRelayerOrOwner() public {
+        address notRelayerOrOwner = makeAddr("notRelayerOrOwner");
+        vm.expectRevert(NotRelayerOrOwner.selector);
+        vm.prank(notRelayerOrOwner);
 
-        oracle.updateRelayer(notRelayer);
+        oracle.updateRelayer(notRelayerOrOwner);
         assertEq(oracle.relayer(), relayer);
     }
 
