@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {IEncryptionOracle as IO, IEncryptionClient, Ciphertext} from "./EncryptionOracle.sol";
+import {IEncryptionOracle as IO, IEncryptionClient, Ciphertext, ReencryptedCipher} from "./EncryptionOracle.sol";
 import {G1Point} from "./Bn128.sol";
 import {AccessControlEnumerable} from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import {AccessControl, IAccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
@@ -27,20 +27,25 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
     // request id
     // TODO fix by giving the ciphertext ID AND the request ID
     // we can't differentiate otherwise
-    event NewOracleResult(uint256 requestId, Ciphertext ciphertext);
+    event NewOracleResult(uint256 requestId, ReencryptedCipher ciphertext);
 
-    function oracleResult(uint256 _requestId, Ciphertext calldata _cipher) external {
-        require(msg.sender == address(oracle), "only oracle can submit results");
+    function oracleResult(
+        uint256 _requestId,
+        ReencryptedCipher calldata _cipher
+    ) external {
+        require(
+            msg.sender == address(oracle),
+            "only oracle can submit results"
+        );
         // TODO : some checks ? do we handle pending requests here etc ?
         emit NewOracleResult(_requestId, _cipher);
     }
 
     // TODO add different roles, payable etc
-    function submitCiphertext(Ciphertext calldata _cipher, bytes calldata _link)
-        public
-        onlyRole(WRITER_ROLE)
-        returns (uint256)
-    {
+    function submitCiphertext(
+        Ciphertext calldata _cipher,
+        bytes calldata _link
+    ) public onlyRole(WRITER_ROLE) returns (uint256) {
         return oracle.submitCiphertext(_cipher, _link, msg.sender);
     }
 
@@ -51,37 +56,46 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
         oracle.requestReencryption(_id, pubkey);
     }
 
-    function grantRole(bytes32 _role, address)
+    function grantRole(
+        bytes32 _role,
+        address
+    )
         public
         view
-        override (AccessControl, IAccessControl)
+        override(AccessControl, IAccessControl)
         onlyRole(getRoleAdmin(_role))
     {
         // TODO check if there are other public functions to restrict
         require(false, "This can not be called - call grantRoleKey");
     }
 
-    function grantRoleKey(bytes32 _role, address _account, G1Point calldata _pubkey)
-        external
-        onlyRole(getRoleAdmin(_role))
-    {
+    function grantRoleKey(
+        bytes32 _role,
+        address _account,
+        G1Point calldata _pubkey
+    ) external onlyRole(getRoleAdmin(_role)) {
         require(_pubkey.x != 0, "public key can't be 0");
         require(_pubkey.y != 0, "public key can't be 0");
         super.grantRole(_role, _account);
         addressToKey[_account] = _pubkey;
     }
 
-    function revokeRole(bytes32 _role, address _account)
+    function revokeRole(
+        bytes32 _role,
+        address _account
+    )
         public
         virtual
-        override (AccessControl, IAccessControl)
+        override(AccessControl, IAccessControl)
         onlyRole(getRoleAdmin(_role))
     {
         super.revokeRole(_role, _account);
         delete (addressToKey[_account]);
     }
 
-    function getKeyForAddress(address _account) public view returns (G1Point memory) {
+    function getKeyForAddress(
+        address _account
+    ) public view returns (G1Point memory) {
         return addressToKey[_account];
     }
 
