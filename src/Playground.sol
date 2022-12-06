@@ -159,6 +159,41 @@ contract Playground is BN254EncryptionOracle {
         return Bn128.dleqverify(_rg1, _rg2, _proof, _label);
     }
 
+    function debugDleq(
+        G1Point calldata _base1,
+        G1Point calldata _base2,
+        G1Point calldata _rg1,
+        G1Point calldata _rg2,
+        DleqProof calldata _proof,
+        uint256 _label
+    ) public view returns (uint256) {
+        G1Point memory w1 = Bn128.g1Add(
+            Bn128.scalarMultiply(_base1, _proof.f),
+            Bn128.scalarMultiply(_rg1, _proof.e)
+        );
+        G1Point memory w2 = Bn128.g1Add(
+            Bn128.scalarMultiply(_base2, _proof.f),
+            Bn128.scalarMultiply(_rg2, _proof.e)
+        );
+        uint256 challenge = uint256(
+            sha256(
+                abi.encodePacked(
+                    _label,
+                    _rg1.x,
+                    _rg1.y,
+                    _rg2.x,
+                    _rg2.y,
+                    w1.x,
+                    w1.y,
+                    w2.x,
+                    w2.y
+                )
+            )
+        ) % Bn128.r;
+
+        return challenge;
+    }
+
     function verifyDleqProofWithBases(
         G1Point calldata _base1,
         G1Point calldata _base2,
