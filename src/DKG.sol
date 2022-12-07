@@ -270,7 +270,10 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @param dealer The address of the dealer to complain against
     /// @param badBundle the deal bundle which is claimed to be invalid
     /// @param sharedKey the key shared between the recipient and the dealer
-    /// @custom:todo Implement
+    /// @custom:note The shared key is noted "rg1" in the dleq verification. rg2
+    /// is taken from the contract directly as it is the public key of the complainer.
+    /// Indeed both shared key and pubkey of complainer should share the same dlog.
+    /// @custom:todo Implement this in batch
     function submitComplaintBundle(
         address dealer,
         DealBundle calldata badBundle,
@@ -297,12 +300,16 @@ contract DKG is ThresholdNetwork, IDKG {
             return ComplaintReturn.InvalidHash;
         }
         // Verify the dleq proof:
-        // first base is the public key submitted during registration
-        // second base is the shared key that complainers is putting here
-        // both should have same dlog
+        // base1 is generator, base1 from bn128
+        // rg1 is the public key submitted during registration, built on top of base1
+        // base2 is pubkey of the dealer
+        // second rg2 is the shared key between complainer and dealer, built on top of dealer pubkey(base2)
+        // both rg1 and rg2 should have same dlog
         if (
-            Bn128.dleqverify(
+            Bn128.dleq_verify_with_bases(
+                Bn128.base1(),
                 pubkeys[dealer],
+                pubkeys[msg.sender],
                 sharedKey,
                 proof,
                 COMPLAINT_LABEL
