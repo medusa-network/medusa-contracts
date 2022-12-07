@@ -2,13 +2,13 @@
 pragma solidity ^0.8.17;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {DKG} from "./DKG.sol";
+import {IDKGMembership, DKG} from "./DKG.sol";
 
 /// @title DKGFactory
 /// @author Cryptonet
 /// @notice Factory contract for creating DKGs
 /// @dev Deploys new DKGs and registers a unique id for each
-contract DKGFactory is Ownable {
+contract DKGFactory is Ownable, IDKGMembership {
     /// @notice List of launched dkg addresses
     mapping(address => bool) public dkgAddresses;
 
@@ -31,6 +31,7 @@ contract DKGFactory is Ownable {
         return address(dkg);
     }
 
+    // @notice implementing IDKGMembership interface
     function isAuthorizedNode(address node) external view returns (bool) {
         return authorizedNodes[node];
     }

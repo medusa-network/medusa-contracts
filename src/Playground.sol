@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
+import {IDKGMembership} from "./DKG.sol";
 import {Ciphertext} from "./EncryptionOracle.sol";
 import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
 
@@ -10,7 +11,7 @@ import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
 
 /*import "./altbn128.sol";*/
 
-contract Playground is BN254EncryptionOracle {
+contract Playground is BN254EncryptionOracle, IDKGMembership {
     using Bn128 for G1Point;
     using Bn128 for bytes32;
 
@@ -28,27 +29,30 @@ contract Playground is BN254EncryptionOracle {
         /*acc2.y = 0;*/
     }
 
-    function compressPoint(G1Point calldata _point)
-        external
-        pure
-        returns (uint256)
-    {
+    function isAuthorizedNode(
+        address node
+    ) external view virtual returns (bool) {
+        // everybody is authorized ! It's for testing purpose, without
+        // having to launch a full DKG factory, and being able to control the launch
+        // of the DKG directly.
+        return true;
+    }
+
+    function compressPoint(
+        G1Point calldata _point
+    ) external pure returns (uint256) {
         return uint256(_point.g1Compress());
     }
 
-    function parityPoint(G1Point calldata _point)
-        external
-        pure
-        returns (uint8)
-    {
+    function parityPoint(
+        G1Point calldata _point
+    ) external pure returns (uint8) {
         return uint8(bytes32(_point.y)[31] & 0x01);
     }
 
-    function decompressPoint(uint256 _point)
-        external
-        view
-        returns (G1Point memory)
-    {
+    function decompressPoint(
+        uint256 _point
+    ) external view returns (G1Point memory) {
         return bytes32(_point).g1Decompress();
     }
 
@@ -95,27 +99,23 @@ contract Playground is BN254EncryptionOracle {
         );
     }
 
-    function scalarMul(G1Point calldata p, uint256 r)
-        public
-        view
-        returns (G1Point memory)
-    {
+    function scalarMul(
+        G1Point calldata p,
+        uint256 r
+    ) public view returns (G1Point memory) {
         return Bn128.scalarMultiply(p, r);
     }
 
-    function pointAdd(G1Point calldata p1, G1Point calldata p2)
-        public
-        view
-        returns (G1Point memory)
-    {
+    function pointAdd(
+        G1Point calldata p1,
+        G1Point calldata p2
+    ) public view returns (G1Point memory) {
         return Bn128.g1Add(p1, p2);
     }
 
-    function identity(G1Point calldata p1)
-        public
-        view
-        returns (G1Point memory)
-    {
+    function identity(
+        G1Point calldata p1
+    ) public view returns (G1Point memory) {
         return p1;
     }
 
