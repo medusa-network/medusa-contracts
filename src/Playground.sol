@@ -126,6 +126,7 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
     function deployOracle(G1Point memory distkey) public returns (address) {
         BN254EncryptionOracle _oracle = new BN254EncryptionOracle(distkey);
         oracle = address(_oracle);
+        distKey = distkey;
         return oracle;
     }
 

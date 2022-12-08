@@ -148,12 +148,12 @@ abstract contract EncryptionOracle is
             )
         );
         if (
-            !Bn128.dleqverify(
+            Bn128.dleqverify(
                 _cipher.random,
                 _cipher.random2,
                 _cipher.dleq,
                 label
-            )
+            ) == false
         ) {
             revert InvalidCiphertextProof();
         }

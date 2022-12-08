@@ -344,14 +344,14 @@ contract DKG is ThresholdNetwork, IDKG {
                 badBundle.commitment,
                 uint256(complainerIdx)
             );
-            //G1Point memory eval2 = Bn128.scalarMultiply(Bn128.g1(), share);
-            //if (Bn128.g1Equal(eval1, eval2) == true) {
-            //    // the share is as expected, that means the complainer issued a complaint
-            //    // for a valid deal. That means the complainer is gonna get excluded.
-            //    // TODO evict complainer here
-            //    //evictParticipant(msg.sender, complainerIdx, complainer_contrib);
-            //    //return ComplaintReturn.InvalidConsistentShare;
-            //}
+            G1Point memory eval2 = Bn128.scalarMultiply(Bn128.g1(), share);
+            if (Bn128.g1Equal(eval1, eval2) == true) {
+                // the share is as expected, that means the complainer issued a complaint
+                // for a valid deal. That means the complainer is gonna get excluded.
+                // TODO evict complainer here
+                evictParticipant(msg.sender, complainerIdx, complainer_contrib);
+                return ComplaintReturn.InvalidConsistentShare;
+            }
         }
         //// the complaint is valid, i.e. the deal is invalid as the share is not
         //// consistent with the polynomial evaluation. We need to evict the dealer.
