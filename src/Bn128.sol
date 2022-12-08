@@ -112,11 +112,10 @@ library Bn128 {
         return G1Point(base2x, base2y);
     }
 
-    function public_poly_eval(G1Point[] calldata coefficients, uint256 index)
-        internal
-        view
-        returns (G1Point memory)
-    {
+    function public_poly_eval(
+        G1Point[] calldata coefficients,
+        uint256 index
+    ) internal view returns (G1Point memory) {
         uint256 xi = index;
         G1Point memory result = coefficients[coefficients.length - 1];
         for (uint256 i = coefficients.length - 2; i >= 0; i--) {
@@ -130,11 +129,10 @@ library Bn128 {
         return G1Point(0, 0);
     }
 
-    function g1Equal(G1Point memory p1, G1Point memory p2)
-        internal
-        pure
-        returns (bool)
-    {
+    function g1Equal(
+        G1Point memory p1,
+        G1Point memory p2
+    ) internal pure returns (bool) {
         if (p1.x == p2.x && p1.y == p2.y) {
             return true;
         }
@@ -170,11 +168,10 @@ library Bn128 {
     ///      Byzantium. The result of a point from G1 multiplied by a scalar
     ///      should match the point added to itself the same number of times.
     ///      Revert if the provided point isn't on the curve.
-    function scalarMultiply(G1Point memory p_1, uint256 scalar)
-        internal
-        view
-        returns (G1Point memory p_2)
-    {
+    function scalarMultiply(
+        G1Point memory p_1,
+        uint256 scalar
+    ) internal view returns (G1Point memory p_2) {
         // 0x07     id of the bn256ScalarMul precompile
         // 0        number of ether to transfer
         // 96       size of call parameters, i.e. 96 bytes total (256 bit for x, 256 bit for y, 256 bit for scalar)
@@ -194,11 +191,10 @@ library Bn128 {
     /// @dev Wraps the point addition pre-compile introduced in Byzantium.
     ///      Returns the sum of two points on G1. Revert if the provided points
     ///      are not on the curve.
-    function g1Add(G1Point memory a, G1Point memory b)
-        internal
-        view
-        returns (G1Point memory c)
-    {
+    function g1Add(
+        G1Point memory a,
+        G1Point memory b
+    ) internal view returns (G1Point memory c) {
         assembly {
             let arg := mload(0x40)
             mstore(arg, mload(a))
@@ -213,11 +209,9 @@ library Bn128 {
     }
 
     /// @dev Returns true if G1 point is on the curve.
-    function isG1PointOnCurve(G1Point memory point)
-        internal
-        view
-        returns (bool)
-    {
+    function isG1PointOnCurve(
+        G1Point memory point
+    ) internal view returns (bool) {
         return point.y.modExp(2, p) == (point.x.modExp(3, p) + 3) % p;
     }
 
@@ -257,6 +251,11 @@ library Bn128 {
 
     function g1() internal pure returns (G1Point memory) {
         return G1Point(g1x, g1y);
+    }
+
+    function neg(G1Point memory point) internal pure returns (G1Point memory) {
+        point.y = p - point.y;
+        return point;
     }
 }
 
@@ -344,7 +343,7 @@ library ModUtils {
                     return x;
                 }
 
-                gs = modExp(g, uint256(2)**(r - m - 1), p);
+                gs = modExp(g, uint256(2) ** (r - m - 1), p);
                 g = (gs * gs) % p;
                 x = (x * gs) % p;
                 b = (b * g) % p;

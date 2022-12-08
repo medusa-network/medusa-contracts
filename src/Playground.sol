@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
-import {IDKGMembership} from "./DKG.sol";
+import {COMPLAINT_LABEL, IDKGMembership} from "./DKG.sol";
 import {Ciphertext} from "./EncryptionOracle.sol";
 import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
 
@@ -217,11 +217,16 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
         G1Point calldata label_point,
         address label_addr,
         G1Point calldata hashPoint
-    ) public view returns (bytes32) {
-        bytes32 label = sha256(
-            abi.encodePacked(label_addr, label_point.x, label_point.y)
+    ) public view returns (uint256) {
+        uint256 label = uint256(
+            sha256(abi.encodePacked(label_addr, label_point.x, label_point.y))
         );
-        return sha256(abi.encodePacked(label, hashPoint.x, hashPoint.y));
+        return
+            uint256(sha256(abi.encodePacked(label, hashPoint.x, hashPoint.y)));
+    }
+
+    function shalabel() public view returns (uint256) {
+        return uint256(sha256(abi.encodePacked(COMPLAINT_LABEL)));
     }
 
     function transcript_verify(
@@ -235,5 +240,39 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
             return true;
         }
         revert("invalid transcript result");
+    }
+
+    // ---------- simple units tests
+    function shaUint256Input(uint256 input) public pure returns (uint256) {
+        return uint256(sha256(abi.encodePacked(input)));
+    }
+
+    function getConstSha() public pure returns (uint256) {
+        return uint256(1337);
+    }
+
+    function shaUint256Const() public pure returns (uint256) {
+        return shaUint256Input(getConstSha());
+    }
+
+    function doubleShaUint256(uint256 input) public pure returns (uint256) {
+        uint256 lvl1 = shaUint256Input(input);
+        return shaUint256Input(lvl1);
+    }
+
+    function shaPoint(G1Point memory input) public pure returns (uint256) {
+        return uint256(sha256(abi.encodePacked(input.x, input.y)));
+    }
+
+    function shaChallenge(uint256 input) public pure returns (uint256) {
+        uint256 challenge = shaUint256Input(input) % Bn128.r;
+        return challenge;
+    }
+
+    function polynomial_eval(
+        G1Point[] calldata poly,
+        uint256 eval
+    ) public view returns (G1Point memory) {
+        return Bn128.public_poly_eval(poly, eval);
     }
 }

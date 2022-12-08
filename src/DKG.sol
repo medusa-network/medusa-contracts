@@ -2,7 +2,6 @@
 pragma solidity ^0.8.17;
 
 import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
-import {DKGFactory} from "./DKGFactory.sol";
 import {ArbSys, ARBITRUM_ONE, ARBITRUM_GOERLI} from "./ArbSys.sol";
 
 error InvalidPhase();
@@ -21,6 +20,9 @@ enum ComplaintReturn {
     InvalidDleq,
     InvalidConsistentShare
 }
+
+// The final label to use in the DLEQ transcript
+uint256 constant COMPLAINT_LABEL = 1337;
 
 /// @title ThresholdNetwork
 /// @author Cryptonet
@@ -94,9 +96,6 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @notice Each phase lasts 10 blocks
     uint8 public constant BLOCKS_PER_PHASE = 10;
 
-    /// @notice The final label to use in the DLEQ transcript
-    uint256 public constant COMPLAINT_LABEL = 1337;
-
     /// @notice The block number at which this contract is deployed
     uint256 public initTime;
 
@@ -113,6 +112,15 @@ contract DKG is ThresholdNetwork, IDKG {
 
     /// @notice Maps participant address to the temporary key used for this DKG
     mapping(address => G1Point) private pubkeys;
+
+    /// @notice Maps storing the individual contributions to the dist.key.
+    /// It is needed currently to store them as to be able to remove each
+    /// individual contribution during the complaint phase. More specifically,
+    /// the dealer contribution is already given by the complainer, so we don't
+    /// strictly need this. But if the complainer is malicious, we want to remove
+    /// the complainer contribution as well.
+    /// TODO: maybe it's too strict and not very useful ?
+    mapping(address => G1Point) private contributions;
 
     /// @notice Number of nodes registered
     /// @dev serves to designate the index
@@ -259,6 +267,7 @@ contract DKG is ThresholdNetwork, IDKG {
         // His contribution to the public key will get removed. This is done here
         // in an "optimistic" way.
         distKey = distKey.g1Add(_bundle.commitment[0]);
+        contributions[msg.sender] = _bundle.commitment[0];
         // 6. emit event so every other participant can pick it up
         emitDealBundle(index, _bundle);
     }
@@ -277,8 +286,8 @@ contract DKG is ThresholdNetwork, IDKG {
     function submitComplaintBundle(
         address dealer,
         DealBundle calldata badBundle,
-        G1Point memory sharedKey,
-        DleqProof memory proof
+        G1Point calldata sharedKey,
+        DleqProof calldata proof
     )
         external
         onlyRegistered
@@ -288,18 +297,20 @@ contract DKG is ThresholdNetwork, IDKG {
         // Make sure dealer is well registered
         uint32 complainerIdx = indexOfSender();
         uint32 dealerIdx = addressIndex[dealer];
+        G1Point memory complainer_contrib = contributions[msg.sender];
+
         if (dealerIdx == 0) {
-            evictParticipant(msg.sender, complainerIdx);
+            evictParticipant(msg.sender, complainerIdx, complainer_contrib);
             return ComplaintReturn.InvalidDealerIdx;
         }
-        // Compare the hashes compared to bundle provided
+        //// Compare the hashes compared to bundle provided
         uint256 expectedHash = dealHashes[dealerIdx];
         uint256 givenHash = hashDealBundle(badBundle);
         if (expectedHash != givenHash) {
-            evictParticipant(msg.sender, complainerIdx);
+            evictParticipant(msg.sender, complainerIdx, complainer_contrib);
             return ComplaintReturn.InvalidHash;
         }
-        // Verify the dleq proof:
+        //// Verify the dleq proof:
         // base1 is generator, base1 from bn128
         // rg1 is the public key submitted during registration, built on top of base1
         // base2 is pubkey of the dealer
@@ -312,44 +323,53 @@ contract DKG is ThresholdNetwork, IDKG {
                 pubkeys[msg.sender],
                 sharedKey,
                 proof,
-                COMPLAINT_LABEL
+                label_for_complaint()
             ) == false
         ) {
-            evictParticipant(msg.sender, complainerIdx);
+            evictParticipant(msg.sender, complainerIdx, complainer_contrib);
             return ComplaintReturn.InvalidDleq;
         }
 
-        // Decrypt the share
-        uint256 hashed = uint256(
-            sha256(abi.encodePacked(sharedKey.x, sharedKey.y))
-        );
-        // indices start at value 1 so offset by one when referring in the array
-        uint256 cipher = badBundle.encryptedShares[complainerIdx - 1];
-        uint256 share = hashed ^ cipher;
-        // Verify it is consistent with the polynomial setup by the dealer
-        G1Point memory eval1 = Bn128.public_poly_eval(
-            badBundle.commitment,
-            uint256(complainerIdx)
-        );
-        G1Point memory eval2 = Bn128.scalarMultiply(Bn128.g1(), share);
-        if (Bn128.g1Equal(eval1, eval2) == true) {
-            // the share is as expected, that means the complainer issued a complaint
-            // for a valid deal. That means the complainer is gonna get excluded.
-            // TODO evict complainer here
-            evictParticipant(msg.sender, complainerIdx);
-            return ComplaintReturn.InvalidConsistentShare;
+        {
+            // avoiding stack too deep error
+            // Decrypt the share
+            uint256 hashed = uint256(
+                sha256(abi.encodePacked(sharedKey.x, sharedKey.y))
+            );
+            //// indices start at value 1 so offset by one when referring in the array
+            uint256 cipher = badBundle.encryptedShares[complainerIdx - 1];
+            uint256 share = hashed ^ cipher;
+            // Verify it is consistent with the polynomial setup by the dealer
+            G1Point memory eval1 = Bn128.public_poly_eval(
+                badBundle.commitment,
+                uint256(complainerIdx)
+            );
+            //G1Point memory eval2 = Bn128.scalarMultiply(Bn128.g1(), share);
+            //if (Bn128.g1Equal(eval1, eval2) == true) {
+            //    // the share is as expected, that means the complainer issued a complaint
+            //    // for a valid deal. That means the complainer is gonna get excluded.
+            //    // TODO evict complainer here
+            //    //evictParticipant(msg.sender, complainerIdx, complainer_contrib);
+            //    //return ComplaintReturn.InvalidConsistentShare;
+            //}
         }
-
-        // the complaint is valid, i.e. the deal is invalid as the share is not
-        // consistent with the polynomial evaluation. We need to evict the dealer.
-        evictParticipant(dealer, dealerIdx);
+        //// the complaint is valid, i.e. the deal is invalid as the share is not
+        //// consistent with the polynomial evaluation. We need to evict the dealer.
+        G1Point memory dealer_contrib = badBundle.commitment[0];
+        evictParticipant(dealer, dealerIdx, dealer_contrib);
         return ComplaintReturn.ValidComplaint;
     }
 
-    /// evicts a participant from the qualified set of participants. It emits an
+    /// evicts a participant from the qualified set of participants. It removes
+    // its contribution from the public key. It emits an
     /// event giving the index so that offchain nodes can compute the final distributed
     /// key correctly.
-    function evictParticipant(address p, uint32 index) private {
+    function evictParticipant(
+        address p,
+        uint32 index,
+        G1Point memory contribution
+    ) private {
+        distKey = distKey.g1Add(contribution.neg());
         delete addressIndex[p];
         delete dealHashes[index];
         delete pubkeys[p];
@@ -409,5 +429,9 @@ contract DKG is ThresholdNetwork, IDKG {
         }
         return
             uint256(keccak256(abi.encodePacked(db.encryptedShares, flatten)));
+    }
+
+    function label_for_complaint() public pure returns (uint256) {
+        return COMPLAINT_LABEL;
     }
 }
