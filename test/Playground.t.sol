@@ -4,9 +4,10 @@ pragma solidity ^0.8.17;
 import "ds-test/test.sol";
 import "forge-std/Test.sol";
 import {Playground} from "../src/Playground.sol";
-import {Bn128, G1Point, DleqProof} from "../src/Bn128.sol";
+import {Bn128, ModUtils, G1Point, DleqProof} from "../src/Bn128.sol";
 
 contract PlaygroundTest is Test {
+    using ModUtils for uint256;
     Playground private client;
     FakeDleq private fake;
 
@@ -47,9 +48,35 @@ contract PlaygroundTest is Test {
         assertEq(this.verifyDleq(fake.g1, fake.g2, fake.proof, 0), false);
     }
 
-    function testPairingVerification() public {}
+    // TODO put this in bn128 tests
 
-    function testShaThis() public {
-        client.shathis(Bn128.g1(), address(this), Bn128.g1());
+    function randomPoint(uint256 offset) public view returns (G1Point memory) {
+        uint256 scalar = offset + 111111111111111111111111111111111111;
+        return Bn128.scalarMultiply(Bn128.base1(), scalar);
+    }
+
+    function testPolyEval() public view {
+        G1Point memory A = randomPoint(1);
+        G1Point memory B = randomPoint(2);
+        G1Point memory C = randomPoint(3);
+
+        G1Point[] memory poly = new G1Point[](3);
+        poly[0] = A;
+        poly[1] = B;
+        poly[2] = C;
+        // poly is = a + x*b + x²*c
+        uint256 eval_point = 2;
+        G1Point memory exp_result = A;
+        {
+            G1Point memory bx = Bn128.scalarMultiply(B, eval_point);
+            G1Point memory cx2 = Bn128.scalarMultiply(
+                C,
+                eval_point.modExp(2, Bn128.r)
+            );
+            exp_result = Bn128.g1Add(Bn128.g1Add(exp_result, bx), cx2);
+        }
+        // eval result
+        G1Point memory comp_result = client.polynomial_eval(poly, eval_point);
+        assert(Bn128.g1Equal(comp_result, exp_result));
     }
 }

@@ -113,12 +113,13 @@ library Bn128 {
     }
 
     function public_poly_eval(
-        G1Point[] calldata coefficients,
+        G1Point[] memory coefficients,
         uint256 index
     ) internal view returns (G1Point memory) {
         uint256 xi = index;
-        G1Point memory result = coefficients[coefficients.length - 1];
-        for (uint256 i = coefficients.length - 2; i >= 0; i--) {
+        G1Point memory result = g1Zero();
+        uint256 n = coefficients.length;
+        for (uint256 i = n - 1; i >= 0; i--) {
             result = scalarMultiply(result, xi);
             result = g1Add(coefficients[i], result);
         }

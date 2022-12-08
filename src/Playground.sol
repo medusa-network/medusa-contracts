@@ -225,10 +225,6 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
             uint256(sha256(abi.encodePacked(label, hashPoint.x, hashPoint.y)));
     }
 
-    function shalabel() public view returns (uint256) {
-        return uint256(sha256(abi.encodePacked(COMPLAINT_LABEL)));
-    }
-
     function transcript_verify(
         G1Point calldata p1,
         address addr,
@@ -270,7 +266,7 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
     }
 
     function polynomial_eval(
-        G1Point[] calldata poly,
+        G1Point[] memory poly,
         uint256 eval
     ) public view returns (G1Point memory) {
         return Bn128.public_poly_eval(poly, eval);
