@@ -55,7 +55,7 @@ contract PlaygroundTest is Test {
         return Bn128.scalarMultiply(Bn128.base1(), scalar);
     }
 
-    function testPolyEval() public view {
+    function testPolyEval() public {
         G1Point memory A = randomPoint(1);
         G1Point memory B = randomPoint(2);
         G1Point memory C = randomPoint(3);
@@ -70,13 +70,14 @@ contract PlaygroundTest is Test {
         {
             G1Point memory bx = Bn128.scalarMultiply(B, eval_point);
             G1Point memory cx2 = Bn128.scalarMultiply(
-                C,
-                eval_point.modExp(2, Bn128.r)
+                Bn128.scalarMultiply(C, eval_point),
+                eval_point
             );
-            exp_result = Bn128.g1Add(Bn128.g1Add(exp_result, bx), cx2);
+            exp_result = Bn128.g1Add(Bn128.g1Add(A, bx), cx2);
         }
         // eval result
+        // C -> C*index + B -> C*index*index + B*index + A
         G1Point memory comp_result = client.polynomial_eval(poly, eval_point);
-        assert(Bn128.g1Equal(comp_result, exp_result));
+        assertEq(Bn128.g1Equal(comp_result, exp_result), true);
     }
 }

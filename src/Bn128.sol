@@ -117,11 +117,11 @@ library Bn128 {
         uint256 index
     ) internal view returns (G1Point memory) {
         uint256 xi = index;
-        G1Point memory result = g1Zero();
         uint256 n = coefficients.length;
-        for (uint256 i = n - 1; i >= 0; i--) {
+        G1Point memory result = g1Zero();
+        for (int256 i = int256(n - 1); i >= 0; i--) {
             result = scalarMultiply(result, xi);
-            result = g1Add(coefficients[i], result);
+            result = g1Add(coefficients[uint256(i)], result);
         }
         return result;
     }
