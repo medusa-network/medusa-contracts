@@ -26,9 +26,13 @@ contract OracleFactory is Ownable {
     /// @dev Only the Factory owner can deploy a new oracle
     /// @param _distKey The distributed key previously created by a DKG process
     /// @return The id and address of the new oracle
-    function deployReencryption_BN254_G1_HGAMAL(G1Point calldata _distKey) external onlyOwner returns (address) {
+    function deployReencryption_BN254_G1_HGAMAL(G1Point calldata _distKey, address relayer)
+        external
+        onlyOwner
+        returns (address)
+    {
         EncryptionOracle oracle;
-        oracle = new BN254EncryptionOracle(_distKey);
+        oracle = new BN254EncryptionOracle(_distKey, relayer);
 
         oracles[address(oracle)] = true;
 
@@ -46,5 +50,11 @@ contract OracleFactory is Ownable {
         require(oracles[_oracle], "no oracle at this address registered");
         EncryptionOracle oracle = EncryptionOracle(_oracle);
         oracle.unpause();
+    }
+
+    function updateRelayer(address _oracle, address _newRelayer) public onlyOwner {
+        require(oracles[_oracle], "no oracle at this address registered");
+        EncryptionOracle oracle = EncryptionOracle(_oracle);
+        oracle.updateRelayer(_newRelayer);
     }
 }
