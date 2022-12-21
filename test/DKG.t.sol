@@ -1,7 +1,18 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {DealBundle, IDKG, DKG, NotAuthorized, NotRegistered, AlreadyRegistered, ParticipantLimit, InvalidPhase, InvalidSharesCount, InvalidCommitmentsCount} from "../src/DKG.sol";
+import {
+    DealBundle,
+    IDKG,
+    DKG,
+    NotAuthorized,
+    NotRegistered,
+    AlreadyRegistered,
+    ParticipantLimit,
+    InvalidPhase,
+    InvalidSharesCount,
+    InvalidCommitmentsCount
+} from "../src/DKG.sol";
 import {DKGFactory} from "../src/DKGFactory.sol";
 import {Bn128, G1Point, DleqProof} from "../src/Bn128.sol";
 import "forge-std/Test.sol";
@@ -29,10 +40,7 @@ contract DKGTest is Test {
         uint256 f = 21888242871839275222246405745257275088548364400416034343698204186575808495133;
         uint256 e = 21888242871839275222246405745257275088548364400416034343698204186575808495134;
         G1Point memory g1 = Bn128.scalarMultiply(Bn128.g1(), f);
-        G1Point memory g2 = Bn128.scalarMultiply(
-            Bn128.scalarMultiply(Bn128.g1(), e),
-            f
-        );
+        G1Point memory g2 = Bn128.scalarMultiply(Bn128.scalarMultiply(Bn128.g1(), e), f);
         return FakeDleq(g1, g2, DleqProof(f, e));
     }
 
@@ -169,12 +177,7 @@ contract DKGTest is Test {
         DealBundle memory bundle = emptyDealBundle();
         vm.prank(nextParticipant);
         vm.expectRevert(NotRegistered.selector);
-        dkg.submitComplaintBundle(
-            address(uint160(2)),
-            bundle,
-            p1,
-            fakeProof.proof
-        );
+        dkg.submitComplaintBundle(address(uint160(2)), bundle, p1, fakeProof.proof);
     }
 
     function testCannotSubmitComplaintBundleIfInvalidPhase() public {
@@ -186,12 +189,7 @@ contract DKGTest is Test {
         vm.prank(nextParticipant);
         DealBundle memory bundle = emptyDealBundle();
         vm.expectRevert(InvalidPhase.selector);
-        dkg.submitComplaintBundle(
-            address(uint160(2)),
-            bundle,
-            p1,
-            fakeProof.proof
-        );
+        dkg.submitComplaintBundle(address(uint160(2)), bundle, p1, fakeProof.proof);
     }
 
     function testCannotSubmitCOmplaintWithInvalidBundle() public {
