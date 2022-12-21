@@ -40,11 +40,11 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
         return oracle.submitCiphertext(_cipher, msg.sender);
     }
 
-    function askForDecryption(uint256 _id) external {
+    function askForDecryption(uint256 _id) external payable {
         G1Point memory pubkey = addressToKey[msg.sender];
         //  check if it has the right permission
         require(hasRole(READER_ROLE, msg.sender), "Caller is not a reader");
-        oracle.requestReencryption(_id, pubkey);
+        oracle.requestReencryption{value: msg.value}(_id, pubkey);
     }
 
     function grantRole(bytes32 _role, address)

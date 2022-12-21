@@ -67,8 +67,8 @@ contract MedusaFans is IEncryptionClient, PullPayment {
         if (msg.value < listing.price) {
             revert InsufficentFunds();
         }
-        _asyncTransfer(listing.seller, msg.value);
-        uint256 requestId = oracle.requestReencryption(cipherId, buyerPublicKey);
+        _asyncTransfer(listing.seller, listing.price);
+        uint256 requestId = oracle.requestReencryption{value: msg.value - listing.price}(cipherId, buyerPublicKey);
         emit NewSale(msg.sender, listing.seller, requestId, cipherId);
         return requestId;
     }
