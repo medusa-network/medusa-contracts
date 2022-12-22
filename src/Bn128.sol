@@ -38,7 +38,7 @@ library Bn128 {
     uint256 internal constant base2y = 2648212145371980650762357218546059709774557459353804686023280323276775278879;
     uint256 internal constant r = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
-    function dleq_verify_with_bases(
+    function dleqVerifyWithBases(
         G1Point memory _base1,
         G1Point memory _base2,
         G1Point memory _rg1,
