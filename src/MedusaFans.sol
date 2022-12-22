@@ -2,7 +2,7 @@
 pragma solidity ^0.8.17;
 
 import {BN254EncryptionOracle as Oracle} from "./BN254EncryptionOracle.sol";
-import {IEncryptionClient, Ciphertext} from "./EncryptionOracle.sol";
+import {IEncryptionClient, Ciphertext, ReencryptedCipher} from "./EncryptionOracle.sol";
 import {G1Point} from "./Bn128.sol";
 import {PullPayment} from "@openzeppelin/contracts/security/PullPayment.sol";
 
@@ -23,7 +23,7 @@ contract MedusaFans is IEncryptionClient, PullPayment {
     /// @notice A mapping from cipherId to listing
     mapping(uint256 => Listing) public listings;
 
-    event ListingDecryption(uint256 indexed requestId, Ciphertext ciphertext);
+    event ListingDecryption(uint256 indexed requestId, ReencryptedCipher ciphertext);
     event NewListing(
         address indexed seller, uint256 indexed cipherId, string name, string description, uint256 price, string uri
     );
@@ -67,14 +67,14 @@ contract MedusaFans is IEncryptionClient, PullPayment {
         if (msg.value < listing.price) {
             revert InsufficentFunds();
         }
-        _asyncTransfer(listing.seller, msg.value);
-        uint256 requestId = oracle.requestReencryption(cipherId, buyerPublicKey);
+        _asyncTransfer(listing.seller, listing.price);
+        uint256 requestId = oracle.requestReencryption{value: msg.value - listing.price}(cipherId, buyerPublicKey);
         emit NewSale(msg.sender, listing.seller, requestId, cipherId);
         return requestId;
     }
 
     /// @inheritdoc IEncryptionClient
-    function oracleResult(uint256 requestId, Ciphertext calldata cipher) external onlyOracle {
+    function oracleResult(uint256 requestId, ReencryptedCipher calldata cipher) external onlyOracle {
         emit ListingDecryption(requestId, cipher);
     }
 

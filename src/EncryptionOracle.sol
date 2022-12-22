@@ -7,13 +7,22 @@ import {Suite} from "./OracleFactory.sol";
 import {ThresholdNetwork} from "./DKG.sol";
 import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
 
-/// @notice A 32-byte encrypted ciphertext
+/// @notice A 32-byte encrypted ciphertext that a client submits to Medusa
 struct Ciphertext {
     G1Point random;
     uint256 cipher;
     /// DLEQ part
     G1Point random2;
     DleqProof dleq;
+}
+
+/// @notice Struct that Medusa nodes submits in response to a request
+struct ReencryptedCipher {
+    G1Point random;
+    // TODO: Note this is not strictly useful and can be removed to decrease
+    // cost, given the client asking reencryption already knows the original cipher
+    // We should remove it.
+    uint256 cipher;
 }
 
 /// @notice A pending reencryption request
@@ -29,7 +38,7 @@ interface IEncryptionClient {
     /// @dev Implement in client contracts of medusa
     /// @param requestId The id of the original request
     /// @param _cipher the reencryption result
-    function oracleResult(uint256 requestId, Ciphertext calldata _cipher) external;
+    function oracleResult(uint256 requestId, ReencryptedCipher calldata _cipher) external;
 }
 
 interface IEncryptionOracle {
@@ -41,7 +50,7 @@ interface IEncryptionOracle {
     /// The ciphertext proof is checked and if correct, will be signalled to Medusa.
     function submitCiphertext(Ciphertext calldata _cipher, address _encryptor) external returns (uint256);
 
-    function deliverReencryption(uint256 _requestId, Ciphertext calldata _cipher) external returns (bool);
+    function deliverReencryption(uint256 _requestId, ReencryptedCipher calldata _cipher) external returns (bool);
 
     /// @notice All instance contracts must implement their own encryption suite
     /// @dev e.g. BN254_KEYG1_HGAMAL
@@ -162,7 +171,7 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     /// @param _requestId the pending request id; used to callback the correct client
     /// @param _cipher The reencryption result for the request
     /// @return true if the client callback succeeds, otherwise reverts with OracleResultFailed
-    function deliverReencryption(uint256 _requestId, Ciphertext calldata _cipher)
+    function deliverReencryption(uint256 _requestId, ReencryptedCipher calldata _cipher)
         external
         whenNotPaused
         onlyRelayer

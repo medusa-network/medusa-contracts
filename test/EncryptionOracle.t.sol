@@ -11,7 +11,8 @@ import {
     RequestDoesNotExist,
     OracleResultFailed,
     NotRelayer,
-    NotRelayerOrOwner
+    NotRelayerOrOwner,
+    ReencryptedCipher
 } from "../src/EncryptionOracle.sol";
 import {Suite} from "../src/OracleFactory.sol";
 import {G1Point, DleqProof, Bn128} from "../src/Bn128.sol";
@@ -31,7 +32,7 @@ contract MockEncryptionClient is IEncryptionClient {
         shouldRevert = _shouldRevert;
     }
 
-    function oracleResult(uint256 requestId, Ciphertext memory _cipher) external {
+    function oracleResult(uint256 requestId, ReencryptedCipher memory _cipher) external {
         if (shouldRevert) {
             revert("I messed up");
         }
@@ -47,7 +48,7 @@ contract MockReentrantRelayer {
         // While the oracle's balance is greater than the request's gas reimbursement,
         // keep calling oracle.deliverReencryption until the oracle's funds are drained.
         while (msg.sender.balance >= gasReimbursement) {
-            oracle.deliverReencryption(requestId, Ciphertext(G1Point(1, 2), 3, G1Point(4, 5), DleqProof(6, 7)));
+            oracle.deliverReencryption(requestId, ReencryptedCipher(G1Point(1, 2), 3));
         }
     }
 }
@@ -65,6 +66,15 @@ contract EncryptionOracleTest is Test {
 
     function dummyCiphertext() private pure returns (Ciphertext memory) {
         return Ciphertext(G1Point(12345, 12345), 98765, G1Point(1, 2), DleqProof(1, 2));
+    }
+
+    function dummyReencryption() private pure returns (ReencryptedCipher memory) {
+        return cipher2Reenc(dummyCiphertext());
+    }
+
+    function cipher2Reenc(Ciphertext memory c) private pure returns (ReencryptedCipher memory) {
+        ReencryptedCipher memory rc = ReencryptedCipher(c.random, c.cipher);
+        return rc;
     }
 
     function dummyPublicKey() private pure returns (G1Point memory) {
@@ -169,13 +179,13 @@ contract EncryptionOracleTest is Test {
 
         uint256 relayerBalanceBefore = relayer.balance;
         vm.prank(relayer);
-        bool result = oracle.deliverReencryption(requestId, cipher);
+        bool result = oracle.deliverReencryption(requestId, cipher2Reenc(cipher));
         assert(result);
         assert(relayer.balance == relayerBalanceBefore + gasReimbursement);
     }
 
     function testCannotDeliverReencryptionIfNotRelayer() public {
-        Ciphertext memory cipher = dummyCiphertext();
+        ReencryptedCipher memory cipher = dummyReencryption();
         uint256 randomRequestId = 123312;
 
         vm.expectRevert(NotRelayer.selector);
@@ -183,7 +193,7 @@ contract EncryptionOracleTest is Test {
     }
 
     function testCannotDeliverReencryptionIfRequestDoesNotExist() public {
-        Ciphertext memory cipher = dummyCiphertext();
+        ReencryptedCipher memory cipher = dummyReencryption();
         uint256 randomRequestId = 123312;
 
         vm.expectRevert(RequestDoesNotExist.selector);
@@ -192,7 +202,7 @@ contract EncryptionOracleTest is Test {
     }
 
     function testCannotDeliverReencryptionIfOracleResultNotSupported() public {
-        Ciphertext memory cipher = dummyCiphertext();
+        ReencryptedCipher memory cipher = dummyReencryption();
 
         G1Point memory publicKey = dummyPublicKey();
         uint256 randomCipherId = 123312;
@@ -206,7 +216,7 @@ contract EncryptionOracleTest is Test {
     }
 
     function testCannotDeliverReencryptionIfOracleResultReverts() public {
-        Ciphertext memory cipher = dummyCiphertext();
+        ReencryptedCipher memory cipher = dummyReencryption();
 
         G1Point memory publicKey = dummyPublicKey();
         uint256 randomCipherId = 123312;
@@ -240,7 +250,7 @@ contract EncryptionOracleTest is Test {
         uint256 relayerBalanceBefore = relayer.balance;
         vm.expectRevert(abi.encodeWithSelector(OracleResultFailed.selector, "Failed to send gas reimbursement"));
         vm.prank(address(reentrantRelayer));
-        oracle.deliverReencryption(requestId, cipher);
+        oracle.deliverReencryption(requestId, cipher2Reenc(cipher));
         assert(relayer.balance == relayerBalanceBefore);
     }
 
