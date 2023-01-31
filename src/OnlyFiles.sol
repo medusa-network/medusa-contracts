@@ -16,7 +16,7 @@ struct Listing {
     string uri;
 }
 
-contract MedusaFans is IEncryptionClient, PullPayment {
+contract OnlyFiles is IEncryptionClient, PullPayment {
     /// @notice The Encryption Oracle Instance
     Oracle public oracle;
 
