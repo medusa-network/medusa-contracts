@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import {BN254EncryptionOracle as Oracle} from "./BN254EncryptionOracle.sol";
 import {IEncryptionClient, Ciphertext, ReencryptedCipher} from "./EncryptionOracle.sol";
-import {G1Point} from "./Bn128.sol";
+import {G1Point, DleqProof} from "./Bn128.sol";
 import {PullPayment} from "@openzeppelin/contracts/security/PullPayment.sol";
 
 error CallbackNotAuthorized();
@@ -83,5 +83,10 @@ contract OnlyFiles is IEncryptionClient, PullPayment {
     /// @dev Note: This feels like a nice abstraction, but it's not strictly necessary
     function publicKey() external view returns (G1Point memory) {
         return oracle.distributedKey();
+    }
+
+    function estimateGasForDeliverReencryption() external returns (bool) {
+        uint256 requestId = oracle.requestReencryption(1, G1Point(1, 1));
+        return oracle.deliverReencryption(requestId, Ciphertext(G1Point(1, 1), 1, G1Point(1, 1), DleqProof(1, 1)));
     }
 }
