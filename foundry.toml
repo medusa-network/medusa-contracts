@@ -12,9 +12,10 @@ verbosity = 4
 
 [rpc_endpoints]
 local = "http://localhost:8545"
-arbitrum = "${ARBITRUM_RPC_URL}"
+arbitrum = "https://arb1.arbitrum.io/rpc"
 arbitrum-goerli = "${ARBITRUM_GOERLI_RPC_URL}"
 wallaby = "https://wallaby.node.glif.io/rpc/v1"
+hyperspace = "https://api.hyperspace.node.glif.io/rpc/v1"
 
 [etherscan]
 arbitrum = { key = "${ETHERSCAN_KEY}" }
