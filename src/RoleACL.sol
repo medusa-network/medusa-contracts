@@ -50,7 +50,7 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
     function grantRole(bytes32 _role, address)
         public
         view
-        override (AccessControl, IAccessControl)
+        override(AccessControl, IAccessControl)
         onlyRole(getRoleAdmin(_role))
     {
         // TODO check if there are other public functions to restrict
@@ -70,7 +70,7 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
     function revokeRole(bytes32 _role, address _account)
         public
         virtual
-        override (AccessControl, IAccessControl)
+        override(AccessControl, IAccessControl)
         onlyRole(getRoleAdmin(_role))
     {
         super.revokeRole(_role, _account);
