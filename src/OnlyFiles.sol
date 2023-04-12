@@ -2,7 +2,8 @@
 pragma solidity ^0.8.17;
 
 import {BN254EncryptionOracle as Oracle} from "./BN254EncryptionOracle.sol";
-import {IEncryptionClient, Ciphertext, ReencryptedCipher} from "./EncryptionOracle.sol";
+import {Ciphertext, ReencryptedCipher} from "./EncryptionOracle.sol";
+import {MedusaClient} from "./MedusaClient.sol";
 import {G1Point, DleqProof} from "./Bn128.sol";
 import {PullPayment} from "@openzeppelin/contracts/security/PullPayment.sol";
 
@@ -16,10 +17,7 @@ struct Listing {
     string uri;
 }
 
-contract OnlyFiles is IEncryptionClient, PullPayment {
-    /// @notice The Encryption Oracle Instance
-    Oracle public oracle;
-
+contract OnlyFiles is MedusaClient, PullPayment {
     /// @notice A mapping from cipherId to listing
     mapping(uint256 => Listing) public listings;
 
@@ -36,9 +34,7 @@ contract OnlyFiles is IEncryptionClient, PullPayment {
         _;
     }
 
-    constructor(Oracle _oracle) {
-        oracle = _oracle;
-    }
+    constructor(Oracle _oracle) MedusaClient(_oracle) {}
 
     /// @notice Create a new listing
     /// @dev Submits a ciphertext to the oracle, stores a listing, and emits an event
@@ -73,7 +69,6 @@ contract OnlyFiles is IEncryptionClient, PullPayment {
         return requestId;
     }
 
-    /// @inheritdoc IEncryptionClient
     function oracleResult(uint256 requestId, ReencryptedCipher calldata cipher) external onlyOracle {
         emit ListingDecryption(requestId, cipher);
     }
@@ -83,10 +78,5 @@ contract OnlyFiles is IEncryptionClient, PullPayment {
     /// @dev Note: This feels like a nice abstraction, but it's not strictly necessary
     function publicKey() external view returns (G1Point memory) {
         return oracle.distributedKey();
-    }
-
-    function estimateGasForDeliverReencryption() external returns (bool) {
-        uint256 requestId = oracle.requestReencryption(1, G1Point(1, 1));
-        return oracle.deliverReencryption(requestId, Ciphertext(G1Point(1, 1), 1, G1Point(1, 1), DleqProof(1, 1)));
     }
 }

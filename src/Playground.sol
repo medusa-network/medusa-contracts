@@ -89,11 +89,11 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
         return Bn128.g1Add(p1, p2);
     }
 
-    function identity(G1Point calldata p1) public view returns (G1Point memory) {
+    function identity(G1Point calldata p1) public pure returns (G1Point memory) {
         return p1;
     }
 
-    function idScalar(uint256 s) public view returns (uint256) {
+    function idScalar(uint256 s) public pure returns (uint256) {
         return s;
     }
 
@@ -152,14 +152,14 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
 
     function shathis(G1Point calldata label_point, address label_addr, G1Point calldata hashPoint)
         public
-        view
+        pure
         returns (uint256)
     {
         uint256 label = uint256(sha256(abi.encodePacked(label_addr, label_point.x, label_point.y)));
         return uint256(sha256(abi.encodePacked(label, hashPoint.x, hashPoint.y)));
     }
 
-    function transcript_verify(G1Point calldata p1, address addr, uint256 expect) public view returns (bool) {
+    function transcript_verify(G1Point calldata p1, address addr, uint256 expect) public pure returns (bool) {
         uint256 fs = uint256(sha256(abi.encodePacked(p1.x, p1.y, addr))) % Bn128.r;
         if (fs == expect) {
             return true;

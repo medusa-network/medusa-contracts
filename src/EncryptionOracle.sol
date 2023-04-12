@@ -6,6 +6,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Suite} from "./OracleFactory.sol";
 import {ThresholdNetwork} from "./DKG.sol";
 import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
+import {IEncryptionClient} from "./MedusaClient.sol";
 
 /// @notice A 32-byte encrypted ciphertext that a client submits to Medusa
 struct Ciphertext {
@@ -33,14 +34,6 @@ struct PendingRequest {
     uint96 gasReimbursement; // 12 bytes |
 }
 
-interface IEncryptionClient {
-    /// @notice Callback to client contract when medusa posts a result
-    /// @dev Implement in client contracts of medusa
-    /// @param requestId The id of the original request
-    /// @param _cipher the reencryption result
-    function oracleResult(uint256 requestId, ReencryptedCipher calldata _cipher) external;
-}
-
 interface IEncryptionOracle {
     function pendingRequests(uint256 _requestId) external returns (address, uint96);
 
@@ -55,7 +48,7 @@ interface IEncryptionOracle {
     /// @notice All instance contracts must implement their own encryption suite
     /// @dev e.g. BN254_KEYG1_HGAMAL
     /// @return suite of curve + encryption params supported by this contract
-    function suite() external pure virtual returns (Suite);
+    function suite() external pure returns (Suite);
 
     /// @notice Emitted when a new cipher text is registered with medusa
     /// @dev Broadcasts the id, cipher text, and client or owner of the cipher text
