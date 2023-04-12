@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {Bn128, G1Point} from "./Bn128.sol";
-import {DKGFactory} from "./DKGFactory.sol";
+import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
 import {ArbSys, ARBITRUM_ONE, ARBITRUM_GOERLI} from "./ArbSys.sol";
 
 error InvalidPhase();
@@ -13,6 +12,17 @@ error NotRegistered();
 error InvalidSharesCount();
 error InvalidCommitmentsCount();
 error InvalidCommitment(uint256 index);
+
+enum ComplaintReturn {
+    ValidComplaint,
+    InvalidDealerIdx,
+    InvalidHash,
+    InvalidDleq,
+    InvalidConsistentShare
+}
+
+// The final label to use in the DLEQ transcript
+uint256 constant COMPLAINT_LABEL = 1337;
 
 /// @title ThresholdNetwork
 /// @author Cryptonet
@@ -33,10 +43,13 @@ abstract contract ThresholdNetwork {
 
 /// @notice A bundle of deals submitted by each participant.
 struct DealBundle {
-    G1Point random;
-    uint32[] indices;
     uint256[] encryptedShares;
     G1Point[] commitment;
+}
+
+/// @notice An interface telling which addresses can participate to a DKG
+interface IDKGMembership {
+    function isAuthorizedNode(address participant) external view virtual returns (bool);
 }
 
 interface IDKG {
@@ -51,17 +64,18 @@ interface IDKG {
     /// @param from The address of the participant.
     /// @param index The index of the participant.
     /// @param tmpKey The temporary key of the participant.
-    event NewParticipant(address from, uint32 index, uint256 tmpKey);
+    event NewParticipant(address from, uint32 index, G1Point tmpKey);
 
     /// @notice Emitted when a deal is submitted during the deal phase.
     /// @param dealerIdx The index of the dealer submitting the deal.
     /// @param bundle The deal bundle submitted by the dealer.
-    event DealBundleSubmitted(uint256 dealerIdx, DealBundle bundle);
+    event DealBundleSubmitted(uint32 dealerIdx, DealBundle bundle);
 
-    /// @notice Emitted when a valid complaint is submitted during the complaint phase.
-    /// @param from The address of the participant who submitted the complaint.
-    /// @param evicted The index of the dealer who is evicted from the network.
-    event ValidComplaint(address from, uint32 evicted);
+    /// @notice Emitted when a participant is evicted from the protocol. It can
+    /// happen during any phases.
+    /// @param from The address of the participant who got evicted
+    /// @param index The index of the participant who is evicted from the network.
+    event EvictedParticipant(address from, uint32 index);
 }
 
 /// @title Distributed Key Generation
@@ -94,15 +108,24 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @notice Maps participant address to their index in the DKG
     mapping(address => uint32) private addressIndex;
 
-    /// @notice List of index of the nodes currently registered
-    uint32[] private nodeIndex;
+    /// @notice Maps participant address to the temporary key used for this DKG
+    mapping(address => G1Point) private pubkeys;
+
+    /// @notice Maps storing the individual contributions to the dist.key.
+    /// It is needed currently to store them as to be able to remove each
+    /// individual contribution during the complaint phase. More specifically,
+    /// the dealer contribution is already given by the complainer, so we don't
+    /// strictly need this. But if the complainer is malicious, we want to remove
+    /// the complainer contribution as well.
+    /// TODO: maybe it's too strict and not very useful ?
+    mapping(address => G1Point) private contributions;
 
     /// @notice Number of nodes registered
     /// @dev serves to designate the index
     uint32 private nbRegistered = 0;
 
-    /// @notice The parent factory which deployed this contract
-    DKGFactory private factory;
+    /// @notice Contracts telling who is authorized to participate or not in the DKG
+    IDKGMembership private membership;
 
     modifier onlyRegistered() {
         if (addressIndex[msg.sender] == 0) {
@@ -112,7 +135,7 @@ contract DKG is ThresholdNetwork, IDKG {
     }
 
     modifier onlyAuthorized() {
-        if (!factory.isAuthorizedNode(msg.sender)) {
+        if (!membership.isAuthorizedNode(msg.sender)) {
             revert NotAuthorized();
         }
         _;
@@ -141,12 +164,12 @@ contract DKG is ThresholdNetwork, IDKG {
 
     /// @notice Create a new DKG with an empty public key
     /// @dev The public key is aggregated in "real time" for each new deal or new valid complaint transaction
-    constructor(DKGFactory _factory) ThresholdNetwork(Bn128.g1Zero()) {
+    constructor(IDKGMembership _membership) ThresholdNetwork(Bn128.g1Zero()) {
         initTime = blockNumber();
         registrationTime = initTime + BLOCKS_PER_PHASE;
         dealTime = registrationTime + BLOCKS_PER_PHASE;
         complaintTime = dealTime + BLOCKS_PER_PHASE;
-        factory = _factory;
+        membership = _membership;
     }
 
     function isInRegistrationPhase() public view returns (bool) {
@@ -173,7 +196,7 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @dev Only authorized nodes from the factory can register
     /// @param _tmpKey The temporary key of the participant
     /// @custom:todo make it payable in a super contract
-    function registerParticipant(uint256 _tmpKey) external onlyAuthorized onlyPhase(Phase.REGISTRATION) {
+    function registerParticipant(G1Point memory _tmpKey) external onlyAuthorized onlyPhase(Phase.REGISTRATION) {
         if (nbRegistered >= MAX_PARTICIPANTS) {
             revert ParticipantLimit();
         }
@@ -186,8 +209,8 @@ contract DKG is ThresholdNetwork, IDKG {
         // index will start at 1
         nbRegistered++;
         uint32 index = nbRegistered;
-        nodeIndex.push(index);
         addressIndex[msg.sender] = index;
+        pubkeys[msg.sender] = _tmpKey;
         emit NewParticipant(msg.sender, index, _tmpKey);
     }
 
@@ -208,59 +231,128 @@ contract DKG is ThresholdNetwork, IDKG {
         uint32 index = indexOfSender();
         // 1. Check he submitted enough encrypted shares
         // We expect the dealer to submit his own too.
-        // TODO : do we have too ?
         if (_bundle.encryptedShares.length != numberParticipants()) {
             revert InvalidSharesCount();
         }
         // 2. Check he submitted enough committed coefficients
-        // TODO Check actual bn128 check on each of them
         uint256 len = threshold();
         if (_bundle.commitment.length != len) {
             revert InvalidCommitmentsCount();
         }
         // 3. Check that commitments are all on the bn128 curve by decompressing
         // them
-        // TODO hash
-        //uint256[] memory compressed = new uint256[](len);
         for (uint256 i = 0; i < len; i++) {
-            // TODO save the addition of those if successful later
-            //comms[i] = Bn128.g1Decompress(bytes32(_commitment[i]));
             if (!_bundle.commitment[i].isG1PointOnCurve()) {
                 revert InvalidCommitment(i);
             }
-            //compressed[i] = uint256(Bn128.g1Compress(_commitment[i]));
         }
-        // 3. Compute and store the hash
-        //bytes32 comm = keccak256(abi.encodePacked(_encrypted_shares,compressed));
-        // TODO check it is not done before
-        //deal_hashes[indexOfSender()] = uint256(comm);
-        // 4. add the key to the aggregated key
+
+        // 4. Compute and store the hash if not stored previously
+        uint256 bundleHash = hashDealBundle(_bundle);
+        if (dealHashes[index] != 0) {
+            revert AlreadyRegistered();
+        }
+        dealHashes[index] = bundleHash;
+        // 5. add the key to the aggregated key
+        // Note this is not strictly required but is much easier to do it in contract
+        // rather than having someone else upload the result onchain.
+        // Note this distkey is _not yet_ valid - if this participant submitted
+        // an invalid deal, it will get complained about and "rejected" later on.
+        // His contribution to the public key will get removed. This is done here
+        // in an "optimistic" way.
         distKey = distKey.g1Add(_bundle.commitment[0]);
-        // 5. emit event
-        //emit DealBundleSubmitted(index, _bundle);
+        contributions[msg.sender] = _bundle.commitment[0];
+        // 6. emit event so every other participant can pick it up
         emitDealBundle(index, _bundle);
     }
 
     /// @notice Submit a complaint against a deal
     /// @dev The complaint is valid if the deal is not valid and the complainer
-    /// has a share of the deal
-    /* /// @param _index The index of the deal to complain against
-    /// @param _encryptedShare The encrypted share of the complainer
-    /// @param _commitment The commitment of the complainer
-    /// @param _deal The deal to complain against */
-    /// @custom:todo Implement
-    function submitComplaintBundle() external onlyRegistered onlyPhase(Phase.COMPLAINT) {
-        // TODO
-        emit ValidComplaint(msg.sender, 0);
+    /// has a share of the deal. Note that if the complaint is invalid, it is
+    /// the sender/complainer that is being evicted !
+    /// @param dealer The address of the dealer to complain against
+    /// @param badBundle the deal bundle which is claimed to be invalid
+    /// @param sharedKey the key shared between the recipient and the dealer
+    /// @custom:note The shared key is noted "rg1" in the dleq verification. rg2
+    /// is taken from the contract directly as it is the public key of the complainer.
+    /// Indeed both shared key and pubkey of complainer should share the same dlog.
+    /// @custom:todo Implement this in batch
+    function submitComplaintBundle(
+        address dealer,
+        DealBundle calldata badBundle,
+        G1Point calldata sharedKey,
+        DleqProof calldata proof
+    ) external onlyRegistered onlyPhase(Phase.COMPLAINT) returns (ComplaintReturn) {
+        // Make sure dealer is well registered
+        uint32 complainerIdx = indexOfSender();
+        uint32 dealerIdx = addressIndex[dealer];
+        G1Point memory complainer_contrib = contributions[msg.sender];
+
+        if (dealerIdx == 0) {
+            evictParticipant(msg.sender, complainerIdx, complainer_contrib);
+            return ComplaintReturn.InvalidDealerIdx;
+        }
+        //// Compare the hashes compared to bundle provided
+        uint256 expectedHash = dealHashes[dealerIdx];
+        uint256 givenHash = hashDealBundle(badBundle);
+        if (expectedHash != givenHash) {
+            evictParticipant(msg.sender, complainerIdx, complainer_contrib);
+            return ComplaintReturn.InvalidHash;
+        }
+        //// Verify the dleq proof:
+        // base1 is generator, base1 from bn128
+        // rg1 is the public key submitted during registration, built on top of base1
+        // base2 is pubkey of the dealer
+        // second rg2 is the shared key between complainer and dealer, built on top of dealer pubkey(base2)
+        // both rg1 and rg2 should have same dlog
+        if (
+            Bn128.dleqVerifyWithBases(
+                Bn128.base1(), pubkeys[dealer], pubkeys[msg.sender], sharedKey, proof, labelForComplaint()
+            ) == false
+        ) {
+            evictParticipant(msg.sender, complainerIdx, complainer_contrib);
+            return ComplaintReturn.InvalidDleq;
+        }
+
+        {
+            // avoiding stack too deep error
+            // Decrypt the share
+            uint256 hashed = uint256(sha256(abi.encodePacked(sharedKey.x, sharedKey.y)));
+            //// indices start at value 1 so offset by one when referring in the array
+            uint256 cipher = badBundle.encryptedShares[complainerIdx - 1];
+            uint256 share = hashed ^ cipher;
+            // Verify it is consistent with the polynomial setup by the dealer
+            G1Point memory eval1 = Bn128.publicPolyEval(badBundle.commitment, uint256(complainerIdx));
+            G1Point memory eval2 = Bn128.scalarMultiply(Bn128.g1(), share);
+            if (Bn128.g1Equal(eval1, eval2) == true) {
+                // the share is as expected, that means the complainer issued a complaint
+                // for a valid deal. That means the complainer is gonna get excluded.
+                // TODO evict complainer here
+                evictParticipant(msg.sender, complainerIdx, complainer_contrib);
+                return ComplaintReturn.InvalidConsistentShare;
+            }
+        }
+        //// the complaint is valid, i.e. the deal is invalid as the share is not
+        //// consistent with the polynomial evaluation. We need to evict the dealer.
+        G1Point memory dealer_contrib = badBundle.commitment[0];
+        evictParticipant(dealer, dealerIdx, dealer_contrib);
+        return ComplaintReturn.ValidComplaint;
+    }
+
+    /// evicts a participant from the qualified set of participants. It removes
+    // its contribution from the public key. It emits an
+    /// event giving the index so that offchain nodes can compute the final distributed
+    /// key correctly.
+    function evictParticipant(address p, uint32 index, G1Point memory contribution) private {
+        distKey = distKey.g1Add(contribution.neg());
+        delete addressIndex[p];
+        delete dealHashes[index];
+        delete pubkeys[p];
+        emit EvictedParticipant(p, index);
     }
 
     function numberParticipants() public view returns (uint256) {
         return nbRegistered;
-    }
-
-    // Returns the list of indexes of QUALIFIED participants at the end of the DKG.
-    function participantIndexes() public view onlyPhase(Phase.DONE) returns (uint32[] memory) {
-        return nodeIndex;
     }
 
     function distributedKey() public view override onlyPhase(Phase.DONE) returns (G1Point memory) {
@@ -276,8 +368,8 @@ contract DKG is ThresholdNetwork, IDKG {
         return addressIndex[msg.sender];
     }
 
-    function emitDealBundle(uint32 _index, DealBundle memory _bundle) private {
-        emit DealBundleSubmitted(_index, _bundle);
+    function emitDealBundle(uint32 dealerIdx, DealBundle memory _bundle) private {
+        emit DealBundleSubmitted(dealerIdx, _bundle);
     }
 
     /// @notice returns the current block number of the chain of execution
@@ -288,5 +380,21 @@ contract DKG is ThresholdNetwork, IDKG {
         } else {
             return block.number;
         }
+    }
+
+    /// @notice returns the hash of a deal bundle. Hash is stored at the sharing phase
+    /// and is checked at the complaint phase.
+    function hashDealBundle(DealBundle memory db) public pure returns (uint256) {
+        /// XXX is there no hope of flattening the structs without costs ?
+        /// maybe with for loop over abi.encodePacked(previousEncoding, commit[i]) ?
+        uint256[2][] memory flatten = new uint256[2][](db.commitment.length);
+        for (uint256 i = 0; i < db.commitment.length; i++) {
+            flatten[i] = [db.commitment[i].x, db.commitment[i].y];
+        }
+        return uint256(keccak256(abi.encodePacked(db.encryptedShares, flatten)));
+    }
+
+    function labelForComplaint() public pure returns (uint256) {
+        return COMPLAINT_LABEL;
     }
 }

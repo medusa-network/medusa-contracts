@@ -38,20 +38,39 @@ library Bn128 {
     uint256 internal constant base2y = 2648212145371980650762357218546059709774557459353804686023280323276775278879;
     uint256 internal constant r = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
-    /// TODO XXX Can't extract that in its own library because then can't instantiate in Typescript correctly
-    /// Seems like a linked library problem with typechain.
-    function dleqverify(G1Point calldata _rg1, G1Point calldata _rg2, DleqProof calldata _proof, uint256 _label)
+    function dleqVerifyWithBases(
+        G1Point memory _base1,
+        G1Point memory _base2,
+        G1Point memory _rg1,
+        G1Point memory _rg2,
+        DleqProof memory _proof,
+        uint256 _label
+    ) internal view returns (bool) {
+        return dleqverify_internal(_base1, _base2, _rg1, _rg2, _proof, _label);
+    }
+
+    function dleqverify(G1Point memory _rg1, G1Point memory _rg2, DleqProof memory _proof, uint256 _label)
         internal
         view
-        returns (
-            //) internal view returns (G1Point memory) {
-            bool
-        )
+        returns (bool)
     {
+        return dleqverify_internal(base1(), base2(), _rg1, _rg2, _proof, _label);
+    }
+
+    /// TODO XXX Can't extract that in its own library because then can't instantiate in Typescript correctly
+    /// Seems like a linked library problem with typechain.
+    function dleqverify_internal(
+        G1Point memory _base1,
+        G1Point memory _base2,
+        G1Point memory _rg1,
+        G1Point memory _rg2,
+        DleqProof memory _proof,
+        uint256 _label
+    ) private view returns (bool) {
         // w1 = f*G1 + rG1 * e
-        G1Point memory w1 = g1Add(scalarMultiply(g1(), _proof.f), scalarMultiply(_rg1, _proof.e));
+        G1Point memory w1 = g1Add(scalarMultiply(_base1, _proof.f), scalarMultiply(_rg1, _proof.e));
         // w2 = f*G2 + rG2 * e
-        G1Point memory w2 = g1Add(scalarMultiply(G1Point(base2x, base2y), _proof.f), scalarMultiply(_rg2, _proof.e));
+        G1Point memory w2 = g1Add(scalarMultiply(_base2, _proof.f), scalarMultiply(_rg2, _proof.e));
         uint256 challenge =
             uint256(sha256(abi.encodePacked(_label, _rg1.x, _rg1.y, _rg2.x, _rg2.y, w1.x, w1.y, w2.x, w2.y))) % r;
         if (challenge == _proof.e) {
@@ -60,8 +79,34 @@ library Bn128 {
         return false;
     }
 
+    function base1() internal pure returns (G1Point memory) {
+        return g1();
+    }
+
+    function base2() internal pure returns (G1Point memory) {
+        return G1Point(base2x, base2y);
+    }
+
+    function publicPolyEval(G1Point[] memory coefficients, uint256 index) internal view returns (G1Point memory) {
+        uint256 xi = index;
+        uint256 n = coefficients.length;
+        G1Point memory result = g1Zero();
+        for (int256 i = int256(n - 1); i >= 0; i--) {
+            result = scalarMultiply(result, xi);
+            result = g1Add(coefficients[uint256(i)], result);
+        }
+        return result;
+    }
+
     function g1Zero() internal pure returns (G1Point memory) {
         return G1Point(0, 0);
+    }
+
+    function g1Equal(G1Point memory p1, G1Point memory p2) internal pure returns (bool) {
+        if (p1.x == p2.x && p1.y == p2.y) {
+            return true;
+        }
+        return false;
     }
 
     /// @dev Decompress a point on G1 from a single uint256.
@@ -155,12 +200,17 @@ library Bn128 {
 
     /// @dev Calculates whether the provided number is even or odd.
     /// @return 0x01 if y is an even number and 0x00 if it's odd.
-    function parity(uint256 value) public pure returns (bytes1) {
+    function parity(uint256 value) internal pure returns (bytes1) {
         return bytes32(value)[31] & 0x01;
     }
 
-    function g1() public pure returns (G1Point memory) {
+    function g1() internal pure returns (G1Point memory) {
         return G1Point(g1x, g1y);
+    }
+
+    function neg(G1Point memory point) internal pure returns (G1Point memory) {
+        point.y = p - point.y;
+        return point;
     }
 }
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import {IEncryptionOracle as IO, IEncryptionClient, Ciphertext} from "./EncryptionOracle.sol";
+import {IEncryptionOracle as IO, IEncryptionClient, Ciphertext, ReencryptedCipher} from "./EncryptionOracle.sol";
 import {G1Point} from "./Bn128.sol";
 import {AccessControlEnumerable} from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import {AccessControl, IAccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
@@ -27,9 +27,9 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
     // request id
     // TODO fix by giving the ciphertext ID AND the request ID
     // we can't differentiate otherwise
-    event NewOracleResult(uint256 requestId, Ciphertext ciphertext);
+    event NewOracleResult(uint256 requestId, ReencryptedCipher ciphertext);
 
-    function oracleResult(uint256 _requestId, Ciphertext calldata _cipher) external {
+    function oracleResult(uint256 _requestId, ReencryptedCipher calldata _cipher) external {
         require(msg.sender == address(oracle), "only oracle can submit results");
         // TODO : some checks ? do we handle pending requests here etc ?
         emit NewOracleResult(_requestId, _cipher);
@@ -40,17 +40,17 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
         return oracle.submitCiphertext(_cipher, msg.sender);
     }
 
-    function askForDecryption(uint256 _id) external {
+    function askForDecryption(uint256 _id) external payable {
         G1Point memory pubkey = addressToKey[msg.sender];
         //  check if it has the right permission
         require(hasRole(READER_ROLE, msg.sender), "Caller is not a reader");
-        oracle.requestReencryption(_id, pubkey);
+        oracle.requestReencryption{value: msg.value}(_id, pubkey);
     }
 
     function grantRole(bytes32 _role, address)
         public
         view
-        override (AccessControl, IAccessControl)
+        override(AccessControl, IAccessControl)
         onlyRole(getRoleAdmin(_role))
     {
         // TODO check if there are other public functions to restrict
@@ -70,7 +70,7 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
     function revokeRole(bytes32 _role, address _account)
         public
         virtual
-        override (AccessControl, IAccessControl)
+        override(AccessControl, IAccessControl)
         onlyRole(getRoleAdmin(_role))
     {
         super.revokeRole(_role, _account);
