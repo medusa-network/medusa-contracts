@@ -26,11 +26,8 @@ jobs:
       - name: Check formatting
         run: forge fmt --check
 
-      - name: Run Slither
-        uses: crytic/slither-action@v0.1.1
-        with:
-          ignore-compile: true
-
       - name: Check gas snapshots
         run: forge snapshot --tolerance 5 --check # Allow 5% deviation in gas snapshot
 
+      - name: Run Slither
+        uses: crytic/slither-action@v0.3.0
