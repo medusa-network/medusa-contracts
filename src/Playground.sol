@@ -29,22 +29,30 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
         /*acc2.y = 0;*/
     }
 
-    function isAuthorizedNode(address node) external view virtual returns (bool) {
+    function isAuthorizedNode(
+        address node
+    ) external view virtual returns (bool) {
         // everybody is authorized ! It's for testing purpose, without
         // having to launch a full DKG factory, and being able to control the launch
         // of the DKG directly.
         return true;
     }
 
-    function compressPoint(G1Point calldata _point) external pure returns (uint256) {
+    function compressPoint(
+        G1Point calldata _point
+    ) external pure returns (uint256) {
         return uint256(_point.g1Compress());
     }
 
-    function parityPoint(G1Point calldata _point) external pure returns (uint8) {
+    function parityPoint(
+        G1Point calldata _point
+    ) external pure returns (uint8) {
         return uint8(bytes32(_point.y)[31] & 0x01);
     }
 
-    function decompressPoint(uint256 _point) external view returns (G1Point memory) {
+    function decompressPoint(
+        uint256 _point
+    ) external view returns (G1Point memory) {
         return bytes32(_point).g1Decompress();
     }
 
@@ -75,21 +83,39 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
         return uint256(getAccumulator().g1Compress());
     }
 
-    event NewLogCipher(uint256 indexed id, uint256 rx, uint256 ry, uint256 cipher);
+    event NewLogCipher(
+        uint256 indexed id,
+        uint256 rx,
+        uint256 ry,
+        uint256 cipher
+    );
 
     function logCipher(uint256 id, Ciphertext calldata _cipher) external {
-        emit NewLogCipher(id, _cipher.random.x, _cipher.random.y, _cipher.cipher);
+        emit NewLogCipher(
+            id,
+            _cipher.random.x,
+            _cipher.random.y,
+            _cipher.cipher
+        );
     }
 
-    function scalarMul(G1Point calldata p, uint256 r) public view returns (G1Point memory) {
+    function scalarMul(
+        G1Point calldata p,
+        uint256 r
+    ) public view returns (G1Point memory) {
         return Bn128.scalarMultiply(p, r);
     }
 
-    function pointAdd(G1Point calldata p1, G1Point calldata p2) public view returns (G1Point memory) {
+    function pointAdd(
+        G1Point calldata p1,
+        G1Point calldata p2
+    ) public view returns (G1Point memory) {
         return Bn128.g1Add(p1, p2);
     }
 
-    function identity(G1Point calldata p1) public view returns (G1Point memory) {
+    function identity(
+        G1Point calldata p1
+    ) public view returns (G1Point memory) {
         return p1;
     }
 
@@ -97,7 +123,10 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
         return s;
     }
 
-    function deployOracle(G1Point memory distkey, address relayer) public returns (address) {
+    function deployOracle(
+        G1Point memory distkey,
+        address relayer
+    ) public returns (address) {
         BN254EncryptionOracle _oracle = new BN254EncryptionOracle(
             distkey,
             relayer
@@ -107,12 +136,21 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
         return oracle;
     }
 
-    function submitCiphertextToOracle(Ciphertext calldata _cipher, address _encryptor) public returns (uint256) {
+    function submitCiphertextToOracle(
+        Ciphertext calldata _cipher,
+        address _encryptor
+    ) public returns (uint256) {
         require(oracle != address(0), "oracle not deployed");
-        return BN254EncryptionOracle(oracle).submitCiphertext(_cipher, _encryptor);
+        return
+            BN254EncryptionOracle(oracle).submitCiphertext(_cipher, _encryptor);
     }
 
-    function verifyDLEQProof(G1Point calldata _rg1, G1Point calldata _rg2, DleqProof calldata _proof, uint256 _label)
+    function verifyDLEQProof(
+        G1Point calldata _rg1,
+        G1Point calldata _rg2,
+        DleqProof calldata _proof,
+        uint256 _label
+    )
         public
         view
         returns (
@@ -131,10 +169,29 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
         DleqProof calldata _proof,
         uint256 _label
     ) public view returns (uint256) {
-        G1Point memory w1 = Bn128.g1Add(Bn128.scalarMultiply(_base1, _proof.f), Bn128.scalarMultiply(_rg1, _proof.e));
-        G1Point memory w2 = Bn128.g1Add(Bn128.scalarMultiply(_base2, _proof.f), Bn128.scalarMultiply(_rg2, _proof.e));
-        uint256 challenge =
-            uint256(sha256(abi.encodePacked(_label, _rg1.x, _rg1.y, _rg2.x, _rg2.y, w1.x, w1.y, w2.x, w2.y))) % Bn128.r;
+        G1Point memory w1 = Bn128.g1Add(
+            Bn128.scalarMultiply(_base1, _proof.f),
+            Bn128.scalarMultiply(_rg1, _proof.e)
+        );
+        G1Point memory w2 = Bn128.g1Add(
+            Bn128.scalarMultiply(_base2, _proof.f),
+            Bn128.scalarMultiply(_rg2, _proof.e)
+        );
+        uint256 challenge = uint256(
+            sha256(
+                abi.encodePacked(
+                    _label,
+                    _rg1.x,
+                    _rg1.y,
+                    _rg2.x,
+                    _rg2.y,
+                    w1.x,
+                    w1.y,
+                    w2.x,
+                    w2.y
+                )
+            )
+        ) % Bn128.r;
 
         return challenge;
     }
@@ -147,20 +204,36 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
         DleqProof calldata _proof,
         uint256 _label
     ) public view returns (bool) {
-        return Bn128.dleq_verify_with_bases(_base1, _base2, _rg1, _rg2, _proof, _label);
+        return
+            Bn128.dleqVerifyWithBases(
+                _base1,
+                _base2,
+                _rg1,
+                _rg2,
+                _proof,
+                _label
+            );
     }
 
-    function shathis(G1Point calldata label_point, address label_addr, G1Point calldata hashPoint)
-        public
-        view
-        returns (uint256)
-    {
-        uint256 label = uint256(sha256(abi.encodePacked(label_addr, label_point.x, label_point.y)));
-        return uint256(sha256(abi.encodePacked(label, hashPoint.x, hashPoint.y)));
+    function shathis(
+        G1Point calldata label_point,
+        address label_addr,
+        G1Point calldata hashPoint
+    ) public view returns (uint256) {
+        uint256 label = uint256(
+            sha256(abi.encodePacked(label_addr, label_point.x, label_point.y))
+        );
+        return
+            uint256(sha256(abi.encodePacked(label, hashPoint.x, hashPoint.y)));
     }
 
-    function transcript_verify(G1Point calldata p1, address addr, uint256 expect) public view returns (bool) {
-        uint256 fs = uint256(sha256(abi.encodePacked(p1.x, p1.y, addr))) % Bn128.r;
+    function transcript_verify(
+        G1Point calldata p1,
+        address addr,
+        uint256 expect
+    ) public view returns (bool) {
+        uint256 fs = uint256(sha256(abi.encodePacked(p1.x, p1.y, addr))) %
+            Bn128.r;
         if (fs == expect) {
             return true;
         }
@@ -194,7 +267,10 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
         return challenge;
     }
 
-    function polynomial_eval(G1Point[] memory poly, uint256 eval) public view returns (G1Point memory) {
+    function polynomial_eval(
+        G1Point[] memory poly,
+        uint256 eval
+    ) public view returns (G1Point memory) {
         return Bn128.public_poly_eval(poly, eval);
     }
 }
