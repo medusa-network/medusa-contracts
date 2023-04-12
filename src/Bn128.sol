@@ -87,7 +87,7 @@ library Bn128 {
         return G1Point(base2x, base2y);
     }
 
-    function public_poly_eval(G1Point[] memory coefficients, uint256 index) internal view returns (G1Point memory) {
+    function publicPolyEval(G1Point[] memory coefficients, uint256 index) internal view returns (G1Point memory) {
         uint256 xi = index;
         uint256 n = coefficients.length;
         G1Point memory result = g1Zero();
