@@ -1,0 +1,14 @@
+{
+  "name": "@medusa-network/medusa-contracts",
+  "author": "Medusa Community <info@medusanet.xyz>",
+  "license": "MIT",
+  "version": "0.0.1-rc1",
+  "description": "Contracts implementing and for integrating with the Medusa network",
+  "files": [
+    "src/**/*.sol"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/medusa-network/medusa-contracts.git"
+  }
+}
