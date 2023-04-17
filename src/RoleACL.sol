@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.17;
 
 import {IEncryptionOracle as IO, IEncryptionClient, Ciphertext, ReencryptedCipher} from "./EncryptionOracle.sol";
