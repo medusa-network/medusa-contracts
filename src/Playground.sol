@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
 import {COMPLAINT_LABEL, IDKGMembership} from "./DKG.sol";
-import {Ciphertext} from "./EncryptionOracle.sol";
+import {Ciphertext} from "./interfaces/IEncryptionOracle.sol";
 import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
 
 //import {Dleq} from "./DleqBN128.sol";

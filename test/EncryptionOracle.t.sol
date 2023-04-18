@@ -2,8 +2,10 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import {Ciphertext, ReencryptedCipher, PendingRequest, EncryptionOracle, IEncryptionOracle, RequestDoesNotExist, OracleResultFailed, NotRelayer, NotRelayerOrOwner, ReencryptedCipher} from "../src/EncryptionOracle.sol";
-import {MedusaClient, IEncryptionClient} from "../src/MedusaClient.sol";
+import {Ciphertext, ReencryptedCipher, PendingRequest, IEncryptionOracle} from "../src/interfaces/IEncryptionOracle.sol";
+import {EncryptionOracle, RequestDoesNotExist, OracleResultFailed, NotRelayer, NotRelayerOrOwner} from "../src/EncryptionOracle.sol";
+import {MedusaClient} from "../src/MedusaClient.sol";
+import {IEncryptionClient} from "../src/interfaces/IEncryptionClient.sol";
 import {Suite} from "../src/OracleFactory.sol";
 import {G1Point, DleqProof, Bn128} from "../src/Bn128.sol";
 

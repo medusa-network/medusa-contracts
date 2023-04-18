@@ -2,13 +2,10 @@
 pragma solidity ^0.8.19;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
+import {IEncryptionOracle, Suite} from "./interfaces/IEncryptionOracle.sol";
 import {EncryptionOracle} from "./EncryptionOracle.sol";
+import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
 import {G1Point} from "./Bn128.sol";
-
-/// @notice An enum of supported encryption suites
-/// @dev The format is CURVE_KEYGROUP_ENCRYPTION
-enum Suite {BN254_KEYG1_HGAMAL}
 
 /// @title OracleFactory
 /// @author Cryptonet
@@ -26,13 +23,14 @@ contract OracleFactory is Ownable {
     /// @dev Only the Factory owner can deploy a new oracle
     /// @param _distKey The distributed key previously created by a DKG process
     /// @return The id and address of the new oracle
-    function deployReencryption_BN254_G1_HGAMAL(G1Point calldata _distKey, address relayer)
-        external
-        onlyOwner
-        returns (address)
-    {
-        EncryptionOracle oracle;
-        oracle = new BN254EncryptionOracle(_distKey, relayer);
+    function deployReencryption_BN254_G1_HGAMAL(
+        G1Point calldata _distKey,
+        address relayer
+    ) external onlyOwner returns (address) {
+        BN254EncryptionOracle oracle = new BN254EncryptionOracle(
+            _distKey,
+            relayer
+        );
 
         oracles[address(oracle)] = true;
 
@@ -52,7 +50,10 @@ contract OracleFactory is Ownable {
         oracle.unpause();
     }
 
-    function updateRelayer(address _oracle, address _newRelayer) public onlyOwner {
+    function updateRelayer(address _oracle, address _newRelayer)
+        public
+        onlyOwner
+    {
         require(oracles[_oracle], "no oracle at this address registered");
         EncryptionOracle oracle = EncryptionOracle(_oracle);
         oracle.updateRelayer(_newRelayer);

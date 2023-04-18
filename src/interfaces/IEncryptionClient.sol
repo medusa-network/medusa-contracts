@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import {ReencryptedCipher} from "../EncryptionOracle.sol";
+import {ReencryptedCipher} from "./IEncryptionOracle.sol";
 
 interface IEncryptionClient {
     /// @notice Callback to client contract when medusa posts a result

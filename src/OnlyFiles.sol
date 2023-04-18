@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import {IEncryptionOracle as Oracle, Ciphertext, ReencryptedCipher} from "./EncryptionOracle.sol";
+import {IEncryptionOracle as Oracle, Ciphertext, ReencryptedCipher} from "./interfaces/IEncryptionOracle.sol";
 import {MedusaClient} from "./MedusaClient.sol";
 import {G1Point, DleqProof} from "./Bn128.sol";
 import {PullPayment} from "@openzeppelin/contracts/security/PullPayment.sol";
