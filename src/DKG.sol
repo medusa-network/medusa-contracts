@@ -24,12 +24,17 @@ enum ComplaintReturn {
 // The final label to use in the DLEQ transcript
 uint256 constant COMPLAINT_LABEL = 1337;
 
+interface IThresholdNetwork {
+    function distributedKey() external view returns (G1Point memory);
+}
+
 /// @title ThresholdNetwork
 /// @author Cryptonet
 /// @notice This contract represents a threshold network.
 /// @dev All threshold networks have a distributed key;
 /// the DKG contract facilitates the generation of a key, whereas Oracle contracts are given a key
-abstract contract ThresholdNetwork {
+
+abstract contract ThresholdNetwork is IThresholdNetwork {
     G1Point internal distKey;
 
     constructor(G1Point memory _distKey) {

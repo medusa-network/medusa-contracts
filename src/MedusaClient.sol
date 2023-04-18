@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.17;
 
-import {EncryptionOracle, Ciphertext, ReencryptedCipher} from "./EncryptionOracle.sol";
+import {IEncryptionOracle, Ciphertext, ReencryptedCipher} from "./EncryptionOracle.sol";
 import {G1Point} from "./Bn128.sol";
 
 interface IEncryptionClient {
@@ -14,9 +14,9 @@ interface IEncryptionClient {
 }
 
 abstract contract MedusaClient is IEncryptionClient {
-    EncryptionOracle public oracle;
+    IEncryptionOracle public oracle;
 
-    constructor(EncryptionOracle _oracle) {
+    constructor(IEncryptionOracle _oracle) {
         oracle = _oracle;
     }
 

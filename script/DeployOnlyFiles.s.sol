@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import "forge-std/Script.sol";
 import "../src/OnlyFiles.sol";
 import {BaseScript} from "./BaseScript.s.sol";
-import {BN254EncryptionOracle as Oracle} from "../src/BN254EncryptionOracle.sol";
+import {IEncryptionOracle as Oracle} from "../src/EncryptionOracle.sol";
 
 contract DeployOnlyFiles is BaseScript {
     function run() external {

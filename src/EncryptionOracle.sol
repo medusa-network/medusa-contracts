@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Suite} from "./OracleFactory.sol";
-import {ThresholdNetwork} from "./DKG.sol";
+import {ThresholdNetwork, IThresholdNetwork} from "./DKG.sol";
 import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
 import {IEncryptionClient} from "./MedusaClient.sol";
 
@@ -34,7 +34,7 @@ struct PendingRequest {
     uint96 gasReimbursement; // 12 bytes |
 }
 
-interface IEncryptionOracle {
+interface IEncryptionOracle is IThresholdNetwork {
     function pendingRequests(uint256 _requestId)
         external
         returns (address, uint96);
