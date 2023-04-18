@@ -7,13 +7,13 @@ import {Suite} from "../src/OracleFactory.sol";
 import {Bn128} from "../src/Bn128.sol";
 
 contract BN254EncryptionOracleTest is Test {
-    BN254EncryptionOracle oracle;
+    BN254EncryptionOracle public oracle;
 
     function setUp() public {
         oracle = new BN254EncryptionOracle(Bn128.g1Zero(), address(0));
     }
 
-    function testSuite() public {
+    function testSuite() public view {
         assert(oracle.suite() == Suite.BN254_KEYG1_HGAMAL);
     }
 }

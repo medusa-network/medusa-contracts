@@ -23,18 +23,23 @@ contract PlaygroundTest is Test {
         DleqProof proof;
     }
 
-    function fakeDleq() public returns (FakeDleq memory) {
+    function fakeDleq() public view returns (FakeDleq memory) {
         uint256 f = 21888242871839275222246405745257275088548364400416034343698204186575808495133;
         uint256 e = 21888242871839275222246405745257275088548364400416034343698204186575808495134;
         G1Point memory g1 = Bn128.scalarMultiply(Bn128.g1(), f);
-        G1Point memory g2 = Bn128.scalarMultiply(Bn128.scalarMultiply(Bn128.g1(), e), f);
+        G1Point memory g2 = Bn128.scalarMultiply(
+            Bn128.scalarMultiply(Bn128.g1(), e),
+            f
+        );
         return FakeDleq(g1, g2, DleqProof(f, e));
     }
 
-    function verifyDleq(G1Point calldata g1, G1Point calldata g2, DleqProof calldata proof, uint256 label)
-        public
-        returns (bool)
-    {
+    function verifyDleq(
+        G1Point calldata g1,
+        G1Point calldata g2,
+        DleqProof calldata proof,
+        uint256 label
+    ) public view returns (bool) {
         return Bn128.dleqverify(g1, g2, proof, label);
     }
 
@@ -65,7 +70,10 @@ contract PlaygroundTest is Test {
         G1Point memory exp_result = A;
         {
             G1Point memory bx = Bn128.scalarMultiply(B, eval_point);
-            G1Point memory cx2 = Bn128.scalarMultiply(Bn128.scalarMultiply(C, eval_point), eval_point);
+            G1Point memory cx2 = Bn128.scalarMultiply(
+                Bn128.scalarMultiply(C, eval_point),
+                eval_point
+            );
             exp_result = Bn128.g1Add(Bn128.g1Add(A, bx), cx2);
         }
         // eval result
