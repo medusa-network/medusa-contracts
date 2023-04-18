@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.17;
 
-import {EncryptionOracle, ReencryptedCipher} from "./EncryptionOracle.sol";
+import {EncryptionOracle, Ciphertext, ReencryptedCipher} from "./EncryptionOracle.sol";
 import {G1Point} from "./Bn128.sol";
 
 interface IEncryptionClient {
