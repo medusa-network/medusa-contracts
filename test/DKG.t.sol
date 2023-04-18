@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 import {DealBundle, IDKG, DKG, NotAuthorized, NotRegistered, AlreadyRegistered, ParticipantLimit, InvalidPhase, InvalidSharesCount, InvalidCommitmentsCount} from "../src/DKG.sol";
 import {DKGFactory} from "../src/DKGFactory.sol";

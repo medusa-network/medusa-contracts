@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 import "../src/DKGFactory.sol";
 import {BaseScript} from "./BaseScript.s.sol";

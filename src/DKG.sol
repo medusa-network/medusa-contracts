@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
 import {ArbSys, ARBITRUM_ONE, ARBITRUM_GOERLI} from "./ArbSys.sol";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 import {EncryptionOracle} from "./EncryptionOracle.sol";
 import {G1Point} from "./Bn128.sol";
