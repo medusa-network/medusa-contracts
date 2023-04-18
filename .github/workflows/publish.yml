@@ -1,6 +1,6 @@
 name: Publish contracts to NPM registry
 on:
-  push:
+  # push:
   release:
     types: [created]
 jobs:
