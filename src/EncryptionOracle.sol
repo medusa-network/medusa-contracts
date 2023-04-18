@@ -6,7 +6,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Suite} from "./OracleFactory.sol";
 import {ThresholdNetwork, IThresholdNetwork} from "./DKG.sol";
 import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
-import {IEncryptionClient} from "./MedusaClient.sol";
+import {IEncryptionClient} from "./interfaces/IEncryptionClient.sol";
 
 /// @notice A 32-byte encrypted ciphertext that a client submits to Medusa
 struct Ciphertext {
