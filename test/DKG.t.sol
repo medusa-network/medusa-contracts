@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
 import {DealBundle, IDKG, DKG, NotAuthorized, NotRegistered, AlreadyRegistered, ParticipantLimit, InvalidPhase, InvalidSharesCount, InvalidCommitmentsCount} from "../src/DKG.sol";
