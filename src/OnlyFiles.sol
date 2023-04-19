@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import {IEncryptionOracle as Oracle, Ciphertext, ReencryptedCipher} from "./interfaces/IEncryptionOracle.sol";
-import {MedusaClient} from "./MedusaClient.sol";
-import {G1Point, DleqProof} from "./Bn128.sol";
+import {
+    MedusaClient,
+    IEncryptionClient,
+    IEncryptionOracle,
+    Ciphertext,
+    ReencryptedCipher,
+    G1Point
+} from "./MedusaClient.sol";
 import {PullPayment} from "@openzeppelin/contracts/security/PullPayment.sol";
 
 error ListingDoesNotExist();
@@ -20,8 +25,7 @@ contract OnlyFiles is MedusaClient, PullPayment {
     mapping(uint256 => Listing) public listings;
 
     event ListingDecryption(
-        uint256 indexed requestId,
-        ReencryptedCipher ciphertext
+        uint256 indexed requestId, ReencryptedCipher ciphertext
     );
     event NewListing(
         address indexed seller,
@@ -38,7 +42,7 @@ contract OnlyFiles is MedusaClient, PullPayment {
         uint256 cipherId
     );
 
-    constructor(Oracle _oracle) MedusaClient(_oracle) {}
+    constructor(IEncryptionOracle _oracle) MedusaClient(_oracle) {}
 
     /// @notice Create a new listing
     /// @dev Submits a ciphertext to the oracle, stores a listing, and emits an event
@@ -71,14 +75,17 @@ contract OnlyFiles is MedusaClient, PullPayment {
         if (msg.value < listing.price) {
             revert InsufficentFunds();
         }
+
         _asyncTransfer(listing.seller, listing.price);
         uint256 requestId = oracle.requestReencryption{
             value: msg.value - listing.price
         }(cipherId, buyerPublicKey);
+
         emit NewSale(msg.sender, listing.seller, requestId, cipherId);
         return requestId;
     }
 
+    /// @inheritdoc IEncryptionClient
     function oracleResult(uint256 requestId, ReencryptedCipher calldata cipher)
         external
         onlyOracle
