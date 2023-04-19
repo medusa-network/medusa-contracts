@@ -5,8 +5,17 @@ import {IEncryptionOracle, Ciphertext, ReencryptedCipher} from "./interfaces/IEn
 import {IEncryptionClient} from "./interfaces/IEncryptionClient.sol";
 import {G1Point} from "./Bn128.sol";
 
+error CallbackNotAuthorized();
+
 abstract contract MedusaClient is IEncryptionClient {
     IEncryptionOracle public oracle;
+
+    modifier onlyOracle() {
+        if (msg.sender != address(oracle)) {
+            revert CallbackNotAuthorized();
+        }
+        _;
+    }
 
     constructor(IEncryptionOracle _oracle) {
         oracle = _oracle;

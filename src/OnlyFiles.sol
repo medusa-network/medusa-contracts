@@ -6,7 +6,6 @@ import {MedusaClient} from "./MedusaClient.sol";
 import {G1Point, DleqProof} from "./Bn128.sol";
 import {PullPayment} from "@openzeppelin/contracts/security/PullPayment.sol";
 
-error CallbackNotAuthorized();
 error ListingDoesNotExist();
 error InsufficentFunds();
 
@@ -38,13 +37,6 @@ contract OnlyFiles is MedusaClient, PullPayment {
         uint256 requestId,
         uint256 cipherId
     );
-
-    modifier onlyOracle() {
-        if (msg.sender != address(oracle)) {
-            revert CallbackNotAuthorized();
-        }
-        _;
-    }
 
     constructor(Oracle _oracle) MedusaClient(_oracle) {}
 
