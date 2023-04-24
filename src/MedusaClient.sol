@@ -20,13 +20,4 @@ abstract contract MedusaClient is IEncryptionClient {
     constructor(IEncryptionOracle _oracle) {
         oracle = _oracle;
     }
-
-    function estimateGasForDeliverReencryption() external returns (bool) {
-        uint256 requestId = oracle.requestReencryption(1, G1Point(1, 1));
-        return
-            oracle.deliverReencryption(
-                requestId,
-                ReencryptedCipher(G1Point(1, 1), 1)
-            );
-    }
 }

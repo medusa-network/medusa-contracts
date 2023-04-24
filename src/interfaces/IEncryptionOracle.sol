@@ -57,6 +57,12 @@ interface IEncryptionOracle is IThresholdNetwork {
         ReencryptedCipher calldata _cipher
     ) external returns (bool);
 
+    function estimateDeliverReencryption(
+        uint256 _requestId,
+        ReencryptedCipher calldata _cipher,
+        address callbackRecipient
+    ) external returns (bool);
+
     /// @notice All instance contracts must implement their own encryption suite
     /// @dev e.g. BN254_KEYG1_HGAMAL
     /// @return suite of curve + encryption params supported by this contract

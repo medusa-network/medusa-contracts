@@ -53,8 +53,8 @@ contract MockReentrantRelayer {
 }
 
 contract EncryptionOracleTest is Test {
-    MockEncryptionOracle oracle;
-    address relayer = makeAddr("relayer");
+    MockEncryptionOracle public oracle;
+    address public relayer = makeAddr("relayer");
 
     event NewCiphertext(
         uint256 indexed id,

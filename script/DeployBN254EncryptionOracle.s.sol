@@ -15,7 +15,10 @@ contract DeployBN254EncryptionOracle is BaseScript {
         vm.startBroadcast(deployerPrivateKey);
 
         OracleFactory factory = OracleFactory(getOracleFactoryAddress());
-        factory.deployReencryption_BN254_G1_HGAMAL(getDistributedKey(), relayer);
+        factory.deployReencryption_BN254_G1_HGAMAL(
+            getDistributedKey(),
+            relayer
+        );
         vm.stopBroadcast();
     }
 

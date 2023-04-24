@@ -138,12 +138,41 @@ abstract contract EncryptionOracle is
         uint256 _requestId,
         ReencryptedCipher calldata _cipher
     ) external whenNotPaused onlyRelayer returns (bool) {
-        /// @custom:todo We need to verify a threshold signature to verify the cipher result
-        if (!requestExists(_requestId)) {
+        PendingRequest memory pr = pendingRequests[_requestId];
+        if (pr.client == address(0)) {
             revert RequestDoesNotExist();
         }
-        PendingRequest memory pr = pendingRequests[_requestId];
         delete pendingRequests[_requestId];
+        IEncryptionClient client = IEncryptionClient(pr.client);
+
+        // Note: This should be safe from reentrancy attacks because we delete the pending request before paying/calling the relayer
+        (bool sent, ) = msg.sender.call{value: pr.gasReimbursement}("");
+        if (!sent) {
+            revert OracleResultFailed("Failed to send gas reimbursement");
+        }
+
+        try client.oracleResult(_requestId, _cipher) {
+            return true;
+        } catch Error(string memory reason) {
+            revert OracleResultFailed(reason);
+        } catch {
+            revert OracleResultFailed(
+                "Client does not support oracleResult() method"
+            );
+        }
+    }
+
+    function estimateDeliverReencryption(
+        uint256 _requestId,
+        ReencryptedCipher calldata _cipher,
+        address callbackRecipient
+    ) external whenNotPaused onlyRelayer returns (bool) {
+        PendingRequest memory pr = pendingRequests[_requestId];
+        if (pr.client != address(0)) {
+            delete pendingRequests[_requestId];
+        } else {
+            pr.client = callbackRecipient;
+        }
         IEncryptionClient client = IEncryptionClient(pr.client);
 
         // Note: This should be safe from reentrancy attacks because we delete the pending request before paying/calling the relayer
