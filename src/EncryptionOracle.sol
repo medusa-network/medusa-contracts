@@ -172,6 +172,7 @@ abstract contract EncryptionOracle is
             delete pendingRequests[_requestId];
         } else {
             pr.client = callbackRecipient;
+            pr.gasReimbursement = 1;
         }
         IEncryptionClient client = IEncryptionClient(pr.client);
 

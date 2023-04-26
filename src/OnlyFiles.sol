@@ -19,11 +19,12 @@ contract OnlyFiles is MedusaClient, PullPayment {
 
     event ListingDecryption(
         uint256 indexed requestId,
-        ReencryptedCipher ciphertext
+        ReencryptedCipher reencryptedCipher
     );
     event NewListing(
         address indexed seller,
         uint256 indexed cipherId,
+        Ciphertext ciphertext,
         string name,
         string description,
         uint256 price,
@@ -50,7 +51,15 @@ contract OnlyFiles is MedusaClient, PullPayment {
     ) external returns (uint256) {
         uint256 cipherId = oracle.submitCiphertext(cipher, msg.sender);
         listings[cipherId] = Listing(msg.sender, price, uri);
-        emit NewListing(msg.sender, cipherId, name, description, price, uri);
+        emit NewListing(
+            msg.sender,
+            cipherId,
+            cipher,
+            name,
+            description,
+            price,
+            uri
+        );
         return cipherId;
     }
 
