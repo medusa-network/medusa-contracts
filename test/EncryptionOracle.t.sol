@@ -28,7 +28,11 @@ contract MockEncryptionClient is MedusaClient {
         shouldRevert = _shouldRevert;
     }
 
-    function oracleResult(uint256, ReencryptedCipher calldata) external view {
+    function processOracleResult(uint256, ReencryptedCipher memory)
+        internal
+        view
+        override
+    {
         if (shouldRevert) {
             revert("I messed up");
         }

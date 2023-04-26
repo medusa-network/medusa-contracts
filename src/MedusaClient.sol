@@ -20,4 +20,16 @@ abstract contract MedusaClient is IEncryptionClient {
     constructor(IEncryptionOracle _oracle) {
         oracle = _oracle;
     }
+
+    function oracleResult(uint256 requestId, ReencryptedCipher calldata cipher)
+        external
+        onlyOracle
+    {
+        processOracleResult(requestId, cipher);
+    }
+
+    function processOracleResult(
+        uint256 requestId,
+        ReencryptedCipher memory cipher
+    ) internal virtual;
 }

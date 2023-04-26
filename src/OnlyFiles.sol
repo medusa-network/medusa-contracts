@@ -1,14 +1,7 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import {
-    MedusaClient,
-    IEncryptionClient,
-    IEncryptionOracle,
-    Ciphertext,
-    ReencryptedCipher,
-    G1Point
-} from "./MedusaClient.sol";
+import {MedusaClient, IEncryptionClient, IEncryptionOracle, Ciphertext, ReencryptedCipher, G1Point} from "./MedusaClient.sol";
 import {PullPayment} from "@openzeppelin/contracts/security/PullPayment.sol";
 
 error ListingDoesNotExist();
@@ -25,7 +18,8 @@ contract OnlyFiles is MedusaClient, PullPayment {
     mapping(uint256 => Listing) public listings;
 
     event ListingDecryption(
-        uint256 indexed requestId, ReencryptedCipher ciphertext
+        uint256 indexed requestId,
+        ReencryptedCipher ciphertext
     );
     event NewListing(
         address indexed seller,
@@ -85,11 +79,10 @@ contract OnlyFiles is MedusaClient, PullPayment {
         return requestId;
     }
 
-    /// @inheritdoc IEncryptionClient
-    function oracleResult(uint256 requestId, ReencryptedCipher calldata cipher)
-        external
-        onlyOracle
-    {
+    function processOracleResult(
+        uint256 requestId,
+        ReencryptedCipher memory cipher
+    ) internal override {
         emit ListingDecryption(requestId, cipher);
     }
 
