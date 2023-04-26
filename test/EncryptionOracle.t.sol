@@ -46,7 +46,7 @@ contract MockReentrantRelayer {
         while (msg.sender.balance >= gasReimbursement) {
             oracle.deliverReencryption(
                 requestId,
-                ReencryptedCipher(G1Point(1, 2), 3)
+                ReencryptedCipher(G1Point(1, 2))
             );
         }
     }
@@ -95,7 +95,7 @@ contract EncryptionOracleTest is Test {
         pure
         returns (ReencryptedCipher memory)
     {
-        ReencryptedCipher memory rc = ReencryptedCipher(c.random, c.cipher);
+        ReencryptedCipher memory rc = ReencryptedCipher(c.random);
         return rc;
     }
 

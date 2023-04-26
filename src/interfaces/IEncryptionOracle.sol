@@ -22,10 +22,6 @@ struct Ciphertext {
 /// @notice Struct that Medusa nodes submits in response to a request
 struct ReencryptedCipher {
     G1Point random;
-    // TODO: Note this is not strictly useful and can be removed to decrease
-    // cost, given the client asking reencryption already knows the original cipher
-    // We should remove it.
-    uint256 cipher;
 }
 
 /// @notice A pending reencryption request
