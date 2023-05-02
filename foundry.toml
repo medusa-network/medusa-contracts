@@ -7,14 +7,18 @@ remappings = ["ds-test/=lib/ds-test/src/","@openzeppelin/contracts=lib/openzeppe
 # See more config options https://github.com/gakonst/foundry/tree/master/configr
 optimizer = true
 optimizer_runs = 200
-solc-version = "0.8.17"
+solc-version = "0.8.19"
 verbosity = 4
+
+[fmt]
+line_length = 80
 
 [rpc_endpoints]
 local = "http://localhost:8545"
-arbitrum = "${ARBITRUM_RPC_URL}"
+arbitrum = "https://arb1.arbitrum.io/rpc"
 arbitrum-goerli = "${ARBITRUM_GOERLI_RPC_URL}"
 wallaby = "https://wallaby.node.glif.io/rpc/v1"
+hyperspace = "https://api.hyperspace.node.glif.io/rpc/v1"
 
 [etherscan]
 arbitrum = { key = "${ETHERSCAN_KEY}" }

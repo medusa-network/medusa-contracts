@@ -14,6 +14,7 @@ clean  :; forge clean
 snapshot :; forge snapshot
 fmt    :; forge fmt
 
+local_deploy_1: local_deploy_dkgfactory local_deploy_oraclefactory local_add_authorized_nodes local_deploy_dkg
 # --- Deploy ---
 #  First deploy the factories
 local_deploy_dkgfactory   :; forge script script/DeployDKGFactory.s.sol:DeployDKGFactory --rpc-url local --broadcast --verify -vvvv
@@ -24,7 +25,7 @@ testnet_deploy_oraclefactory:; forge script script/DeployOracleFactory.s.sol:Dep
 
 # Then add authorized nodes
 local_add_authorized_nodes  :; forge script script/AddAuthorizedNodes.s.sol:AddAuthorizedNodes --rpc-url local --broadcast --verify -vvvv
-testnet_add_authorized_nodes:; forge script script/AddAuthorizedNodes.s.sol:AddAuthorizedNodes --rpc-url arbitrum-goerli --broadcast -vvvv --skip-simulation --slow
+testnet_add_authorized_nodes:; forge script script/AddAuthorizedNodes.s.sol:AddAuthorizedNodes --rpc-url wallaby --broadcast -vvvv --skip-simulation --slow
 
 # Then deploy a DKG
 local_deploy_dkg  :; forge script script/DeployDKGInstance.s.sol:DeployDKGInstance --rpc-url local --broadcast --verify -vvvv
@@ -34,32 +35,49 @@ testnet_deploy_dkg:; forge script script/DeployDKGInstance.s.sol:DeployDKGInstan
 local_deploy_oracle  :; forge script script/DeployBN254EncryptionOracle.s.sol:DeployBN254EncryptionOracle --rpc-url local --broadcast --verify -vvvv
 testnet_deploy_oracle:; forge script script/DeployBN254EncryptionOracle.s.sol:DeployBN254EncryptionOracle --rpc-url arbitrum-goerli --broadcast -vvvv --skip-simulation --slow
 
-testnet_deploy_client:; forge script script/DeployMedusaFans.s.sol:DeployMedusaFans --rpc-url arbitrum-goerli --broadcast -vvvv --skip-simulation --slow
+local_deploy_client:; forge script script/DeployOnlyFiles.s.sol:DeployOnlyFiles --rpc-url local --broadcast --verify -vvvv
+testnet_deploy_client:; forge script script/DeployOnlyFiles.s.sol:DeployOnlyFiles --rpc-url wallaby --broadcast -vvvv --skip-simulation --slow
+
+add_authorized_nodes:; cast send ${DKG_FACTORY_ADDRESS} \
+		"addAuthorizedNode(address)(bool)" \
+		${NODE_3_ADDRESS} \
+		--rpc-url wallaby \
+		--private-key ${PRIVATE_KEY}
 
 deploy_dkg:; cast send ${DKG_FACTORY_ADDRESS} \
 	"deployNewDKG()" \
-	--rpc-url arbitrum-goerli \
+	--rpc-url wallaby \
 	--private-key ${PRIVATE_KEY}
 
+deploy_oracle:; cast send ${ORACLE_FACTORY_ADDRESS} \
+		"deployReencryption_BN254_G1_HGAMAL((uint256, uint256))(address)" \
+		${DIST_KEY} \
+		--rpc-url wallaby \
+		--private-key ${PRIVATE_KEY}
 
 # --- Contract Calls ---
 # Send ether to dead account to progress anvil blockchain
-create_block:; cast send 0x000000000000000000000000000000000000dEaD \
-				--value 0.1ether \
-				--private-key ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+create_block:; cast send 0x82aD00373ffDf70fD32A3D41EEdD70766e48e992 \
+				--value 1.1ether \
+				--private-key ${PRIVATE_KEY}
 
 # Get the distributed key from the completed DKG
-get_key:; cast call 0xa16E02E87b7454126E5E10d957A927A7F5B5d2be \
-			"distributedKey()(uint256,uint256)"
+get_key:; cast call ${DKG_ADDRESS} \
+			"distributedKey()(uint256,uint256)" \
+			--rpc-url local
+
+get_suite:; cast call ${ORACLE_ADDRESS} \
+			"suite()(uint256)" \
+			--rpc-url wallaby
 
 # Submit Ciphertext
-submit_ciphertext:; cast send 0xCafac3dD18aC6c6e92c921884f9E4176737C052c \
-						"submitCiphertext(((uint256, uint256), uint256), bytes)(uint256)" \
-						"((0,0),0)" 0x00000000000000000000000000000000 \
-						--private-key ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 
+submit_ciphertext:; cast send ${ORACLE_ADDRESS} \
+						"submitCiphertext(((uint256, uint256), uint256, (uint256, uint256), (uint256, uint256)), bytes)(uint256)" \
+						"((0,0),0,(0,0),(0,0))" 0x00000000000000000000000000000000 \
+						--private-key ${PRIVATE_KEY}
 
 # Request Reencryption
-request_reencryption:; cast send 0xCafac3dD18aC6c6e92c921884f9E4176737C052c \
+request_reencryption:; cast send ${ORACLE_ADDRESS} \
 						"requestReencryption(uint256,(uint256, uint256))(uint256)" \
 						1 "(0,0)" \
-						--private-key ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 
+						--private-key ${PRIVATE_KEY}

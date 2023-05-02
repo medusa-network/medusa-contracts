@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+// SPDX-License-Identifier: MIT AND Apache-2.0
+pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import {OracleFactory} from "../src/OracleFactory.sol";

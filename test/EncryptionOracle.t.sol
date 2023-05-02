@@ -1,38 +1,38 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+// SPDX-License-Identifier: MIT AND Apache-2.0
+pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import {
-    Ciphertext,
-    PendingRequest,
-    EncryptionOracle,
-    IEncryptionOracle,
-    IEncryptionClient,
-    RequestDoesNotExist,
-    OracleResultFailed,
-    NotRelayer,
-    NotRelayerOrOwner,
-    ReencryptedCipher
-} from "../src/EncryptionOracle.sol";
+import {Ciphertext, ReencryptedCipher, PendingRequest, IEncryptionOracle} from "../src/interfaces/IEncryptionOracle.sol";
+import {EncryptionOracle, RequestDoesNotExist, OracleResultFailed, NotRelayer, NotRelayerOrOwner} from "../src/EncryptionOracle.sol";
+import {MedusaClient} from "../src/MedusaClient.sol";
+import {IEncryptionClient} from "../src/interfaces/IEncryptionClient.sol";
 import {Suite} from "../src/OracleFactory.sol";
 import {G1Point, DleqProof, Bn128} from "../src/Bn128.sol";
 
 contract MockEncryptionOracle is EncryptionOracle {
-    constructor(G1Point memory _distKey, address _relayer) EncryptionOracle(_distKey, _relayer) {}
+    constructor(G1Point memory _distKey, address _relayer)
+        EncryptionOracle(_distKey, _relayer)
+    {}
 
     function suite() external pure override returns (Suite) {
         return Suite.BN254_KEYG1_HGAMAL;
     }
 }
 
-contract MockEncryptionClient is IEncryptionClient {
+contract MockEncryptionClient is MedusaClient {
     bool private shouldRevert;
 
-    constructor(bool _shouldRevert) {
+    constructor(bool _shouldRevert, EncryptionOracle _oracle)
+        MedusaClient(_oracle)
+    {
         shouldRevert = _shouldRevert;
     }
 
-    function oracleResult(uint256 requestId, ReencryptedCipher memory _cipher) external {
+    function processOracleResult(uint256, ReencryptedCipher memory)
+        internal
+        view
+        override
+    {
         if (shouldRevert) {
             revert("I messed up");
         }
@@ -48,32 +48,58 @@ contract MockReentrantRelayer {
         // While the oracle's balance is greater than the request's gas reimbursement,
         // keep calling oracle.deliverReencryption until the oracle's funds are drained.
         while (msg.sender.balance >= gasReimbursement) {
-            oracle.deliverReencryption(requestId, ReencryptedCipher(G1Point(1, 2), 3));
+            oracle.deliverReencryption(
+                requestId,
+                ReencryptedCipher(G1Point(1, 2))
+            );
         }
     }
 }
 
 contract EncryptionOracleTest is Test {
-    MockEncryptionOracle oracle;
-    address relayer = makeAddr("relayer");
+    MockEncryptionOracle public oracle;
+    address public relayer = makeAddr("relayer");
 
-    event NewCiphertext(uint256 indexed id, Ciphertext ciphertext, address client);
-    event ReencryptionRequest(uint256 indexed cipherId, uint256 requestId, G1Point publicKey, PendingRequest request);
+    event NewCiphertext(
+        uint256 indexed id,
+        Ciphertext ciphertext,
+        address client
+    );
+    event ReencryptionRequest(
+        uint256 indexed cipherId,
+        uint256 requestId,
+        G1Point publicKey,
+        PendingRequest request
+    );
 
     function setUp() public {
         oracle = new MockEncryptionOracle(dummyPublicKey(), relayer);
     }
 
     function dummyCiphertext() private pure returns (Ciphertext memory) {
-        return Ciphertext(G1Point(12345, 12345), 98765, G1Point(1, 2), DleqProof(1, 2));
+        return
+            Ciphertext(
+                G1Point(12345, 12345),
+                98765,
+                G1Point(1, 2),
+                DleqProof(1, 2)
+            );
     }
 
-    function dummyReencryption() private pure returns (ReencryptedCipher memory) {
-        return cipher2Reenc(dummyCiphertext());
+    function dummyReencryptedCipher()
+        private
+        pure
+        returns (ReencryptedCipher memory)
+    {
+        return cipherToReenc(dummyCiphertext());
     }
 
-    function cipher2Reenc(Ciphertext memory c) private pure returns (ReencryptedCipher memory) {
-        ReencryptedCipher memory rc = ReencryptedCipher(c.random, c.cipher);
+    function cipherToReenc(Ciphertext memory c)
+        private
+        pure
+        returns (ReencryptedCipher memory)
+    {
+        ReencryptedCipher memory rc = ReencryptedCipher(c.random);
         return rc;
     }
 
@@ -154,38 +180,57 @@ contract EncryptionOracleTest is Test {
         uint96 gasReimbursement = 1 ether;
 
         vm.expectEmit(true, false, false, true);
-        emit ReencryptionRequest(randomCipherId, 1, publicKey, PendingRequest(address(this), gasReimbursement));
-        uint256 requestId = oracle.requestReencryption{value: gasReimbursement}(randomCipherId, publicKey);
+        emit ReencryptionRequest(
+            randomCipherId,
+            1,
+            publicKey,
+            PendingRequest(address(this), gasReimbursement)
+        );
+        uint256 requestId = oracle.requestReencryption{value: gasReimbursement}(
+            randomCipherId,
+            publicKey
+        );
         assertEq(requestId, 1);
 
         uint256 otherRandomCipherId = 45687456;
         vm.expectEmit(true, false, false, true);
-        emit ReencryptionRequest(otherRandomCipherId, 2, publicKey, PendingRequest(address(this), gasReimbursement));
-        requestId = oracle.requestReencryption{value: gasReimbursement}(otherRandomCipherId, publicKey);
+        emit ReencryptionRequest(
+            otherRandomCipherId,
+            2,
+            publicKey,
+            PendingRequest(address(this), gasReimbursement)
+        );
+        requestId = oracle.requestReencryption{value: gasReimbursement}(
+            otherRandomCipherId,
+            publicKey
+        );
         assertEq(requestId, 2);
     }
 
     function testDeliverReencryption() public {
-        Ciphertext memory cipher = dummyCiphertext();
+        ReencryptedCipher memory cipher = dummyReencryptedCipher();
 
         G1Point memory publicKey = dummyPublicKey();
         uint256 randomCipherId = 123312;
         uint96 gasReimbursement = 1 ether;
-        MockEncryptionClient client = new MockEncryptionClient(false);
+        MockEncryptionClient client = new MockEncryptionClient(false, oracle);
         vm.deal(address(client), gasReimbursement);
 
         vm.prank(address(client));
-        uint256 requestId = oracle.requestReencryption{value: gasReimbursement}(randomCipherId, publicKey);
+        uint256 requestId = oracle.requestReencryption{value: gasReimbursement}(
+            randomCipherId,
+            publicKey
+        );
 
         uint256 relayerBalanceBefore = relayer.balance;
         vm.prank(relayer);
-        bool result = oracle.deliverReencryption(requestId, cipher2Reenc(cipher));
+        bool result = oracle.deliverReencryption(requestId, cipher);
         assert(result);
         assert(relayer.balance == relayerBalanceBefore + gasReimbursement);
     }
 
     function testCannotDeliverReencryptionIfNotRelayer() public {
-        ReencryptedCipher memory cipher = dummyReencryption();
+        ReencryptedCipher memory cipher = dummyReencryptedCipher();
         uint256 randomRequestId = 123312;
 
         vm.expectRevert(NotRelayer.selector);
@@ -193,7 +238,7 @@ contract EncryptionOracleTest is Test {
     }
 
     function testCannotDeliverReencryptionIfRequestDoesNotExist() public {
-        ReencryptedCipher memory cipher = dummyReencryption();
+        ReencryptedCipher memory cipher = dummyReencryptedCipher();
         uint256 randomRequestId = 123312;
 
         vm.expectRevert(RequestDoesNotExist.selector);
@@ -202,30 +247,41 @@ contract EncryptionOracleTest is Test {
     }
 
     function testCannotDeliverReencryptionIfOracleResultNotSupported() public {
-        ReencryptedCipher memory cipher = dummyReencryption();
+        ReencryptedCipher memory cipher = dummyReencryptedCipher();
 
         G1Point memory publicKey = dummyPublicKey();
         uint256 randomCipherId = 123312;
 
-        uint256 requestId = oracle.requestReencryption(randomCipherId, publicKey);
+        uint256 requestId = oracle.requestReencryption(
+            randomCipherId,
+            publicKey
+        );
         vm.expectRevert(
-            abi.encodeWithSelector(OracleResultFailed.selector, "Client does not support oracleResult() method")
+            abi.encodeWithSelector(
+                OracleResultFailed.selector,
+                "Client does not support oracleResult() method"
+            )
         );
         vm.prank(relayer);
         oracle.deliverReencryption(requestId, cipher);
     }
 
     function testCannotDeliverReencryptionIfOracleResultReverts() public {
-        ReencryptedCipher memory cipher = dummyReencryption();
+        ReencryptedCipher memory cipher = dummyReencryptedCipher();
 
         G1Point memory publicKey = dummyPublicKey();
         uint256 randomCipherId = 123312;
 
-        MockEncryptionClient client = new MockEncryptionClient(true);
+        MockEncryptionClient client = new MockEncryptionClient(true, oracle);
 
         vm.prank(address(client));
-        uint256 requestId = oracle.requestReencryption(randomCipherId, publicKey);
-        vm.expectRevert(abi.encodeWithSelector(OracleResultFailed.selector, "I messed up"));
+        uint256 requestId = oracle.requestReencryption(
+            randomCipherId,
+            publicKey
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(OracleResultFailed.selector, "I messed up")
+        );
         vm.prank(relayer);
         oracle.deliverReencryption(requestId, cipher);
     }
@@ -236,21 +292,29 @@ contract EncryptionOracleTest is Test {
             dummyPublicKey(),
             address(reentrantRelayer)
         );
-        Ciphertext memory cipher = dummyCiphertext();
+        ReencryptedCipher memory cipher = dummyReencryptedCipher();
 
         G1Point memory publicKey = dummyPublicKey();
         uint256 randomCipherId = 123312;
         uint96 gasReimbursement = 1 ether;
-        MockEncryptionClient client = new MockEncryptionClient(false);
+        MockEncryptionClient client = new MockEncryptionClient(false, oracle);
         vm.deal(address(client), gasReimbursement);
 
         vm.prank(address(client));
-        uint256 requestId = oracle.requestReencryption{value: gasReimbursement}(randomCipherId, publicKey);
+        uint256 requestId = oracle.requestReencryption{value: gasReimbursement}(
+            randomCipherId,
+            publicKey
+        );
 
         uint256 relayerBalanceBefore = relayer.balance;
-        vm.expectRevert(abi.encodeWithSelector(OracleResultFailed.selector, "Failed to send gas reimbursement"));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                OracleResultFailed.selector,
+                "Failed to send gas reimbursement"
+            )
+        );
         vm.prank(address(reentrantRelayer));
-        oracle.deliverReencryption(requestId, cipher2Reenc(cipher));
+        oracle.deliverReencryption(requestId, cipher);
         assert(relayer.balance == relayerBalanceBefore);
     }
 

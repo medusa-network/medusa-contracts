@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+// SPDX-License-Identifier: MIT AND Apache-2.0
+pragma solidity ^0.8.19;
 
-import {IEncryptionOracle as IO, IEncryptionClient, Ciphertext, ReencryptedCipher} from "./EncryptionOracle.sol";
+import {IEncryptionOracle as IO, Ciphertext, ReencryptedCipher} from "./interfaces/IEncryptionOracle.sol";
+import {IEncryptionClient} from "./interfaces/IEncryptionClient.sol";
 import {G1Point} from "./Bn128.sol";
 import {AccessControlEnumerable} from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import {AccessControl, IAccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
@@ -29,14 +30,24 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
     // we can't differentiate otherwise
     event NewOracleResult(uint256 requestId, ReencryptedCipher ciphertext);
 
-    function oracleResult(uint256 _requestId, ReencryptedCipher calldata _cipher) external {
-        require(msg.sender == address(oracle), "only oracle can submit results");
+    function oracleResult(
+        uint256 _requestId,
+        ReencryptedCipher calldata _cipher
+    ) external {
+        require(
+            msg.sender == address(oracle),
+            "only oracle can submit results"
+        );
         // TODO : some checks ? do we handle pending requests here etc ?
         emit NewOracleResult(_requestId, _cipher);
     }
 
     // TODO add different roles, payable etc
-    function submitCiphertext(Ciphertext calldata _cipher) public onlyRole(WRITER_ROLE) returns (uint256) {
+    function submitCiphertext(Ciphertext calldata _cipher)
+        public
+        onlyRole(WRITER_ROLE)
+        returns (uint256)
+    {
         return oracle.submitCiphertext(_cipher, msg.sender);
     }
 
@@ -57,10 +68,11 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
         require(false, "This can not be called - call grantRoleKey");
     }
 
-    function grantRoleKey(bytes32 _role, address _account, G1Point calldata _pubkey)
-        external
-        onlyRole(getRoleAdmin(_role))
-    {
+    function grantRoleKey(
+        bytes32 _role,
+        address _account,
+        G1Point calldata _pubkey
+    ) external onlyRole(getRoleAdmin(_role)) {
         require(_pubkey.x != 0, "public key can't be 0");
         require(_pubkey.y != 0, "public key can't be 0");
         super.grantRole(_role, _account);
@@ -77,7 +89,11 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
         delete (addressToKey[_account]);
     }
 
-    function getKeyForAddress(address _account) public view returns (G1Point memory) {
+    function getKeyForAddress(address _account)
+        public
+        view
+        returns (G1Point memory)
+    {
         return addressToKey[_account];
     }
 

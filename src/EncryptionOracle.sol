@@ -1,70 +1,12 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+// SPDX-License-Identifier: MIT AND Apache-2.0
+pragma solidity ^0.8.19;
 
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Suite} from "./OracleFactory.sol";
 import {ThresholdNetwork} from "./DKG.sol";
 import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
-
-/// @notice A 32-byte encrypted ciphertext that a client submits to Medusa
-struct Ciphertext {
-    G1Point random;
-    uint256 cipher;
-    /// DLEQ part
-    G1Point random2;
-    DleqProof dleq;
-}
-
-/// @notice Struct that Medusa nodes submits in response to a request
-struct ReencryptedCipher {
-    G1Point random;
-    // TODO: Note this is not strictly useful and can be removed to decrease
-    // cost, given the client asking reencryption already knows the original cipher
-    // We should remove it.
-    uint256 cipher;
-}
-
-/// @notice A pending reencryption request
-/// @dev client client's address to callback with a response
-/// @dev gasReimbursement the amount of native currency to reimburse the relayer for gas to submit a result onchain
-struct PendingRequest {
-    address client; // 20 bytes ---------- 32 bytes packed; the entire struct fits in 1 storage slot
-    uint96 gasReimbursement; // 12 bytes |
-}
-
-interface IEncryptionClient {
-    /// @notice Callback to client contract when medusa posts a result
-    /// @dev Implement in client contracts of medusa
-    /// @param requestId The id of the original request
-    /// @param _cipher the reencryption result
-    function oracleResult(uint256 requestId, ReencryptedCipher calldata _cipher) external;
-}
-
-interface IEncryptionOracle {
-    function pendingRequests(uint256 _requestId) external returns (address, uint96);
-
-    function requestReencryption(uint256 _cipherId, G1Point calldata _publickey) external payable returns (uint256);
-
-    /// @notice submit a ciphertext and has been created by the encryptor address.
-    /// The ciphertext proof is checked and if correct, will be signalled to Medusa.
-    function submitCiphertext(Ciphertext calldata _cipher, address _encryptor) external returns (uint256);
-
-    function deliverReencryption(uint256 _requestId, ReencryptedCipher calldata _cipher) external returns (bool);
-
-    /// @notice All instance contracts must implement their own encryption suite
-    /// @dev e.g. BN254_KEYG1_HGAMAL
-    /// @return suite of curve + encryption params supported by this contract
-    function suite() external pure virtual returns (Suite);
-
-    /// @notice Emitted when a new cipher text is registered with medusa
-    /// @dev Broadcasts the id, cipher text, and client or owner of the cipher text
-    event NewCiphertext(uint256 indexed id, Ciphertext ciphertext, address client);
-
-    /// @notice Emitted when a new request is sent to medusa
-    /// @dev Requests can be sent by clients that do not own the cipher text; must verify the request off-chain
-    event ReencryptionRequest(uint256 indexed cipherId, uint256 requestId, G1Point publicKey, PendingRequest request);
-}
+import {IEncryptionOracle, Ciphertext, ReencryptedCipher, PendingRequest, Suite} from "./interfaces/IEncryptionOracle.sol";
+import {IEncryptionClient} from "./interfaces/IEncryptionClient.sol";
 
 /// @notice Reverts when delivering a response for a non-existent request
 error RequestDoesNotExist();
@@ -85,7 +27,12 @@ error NotRelayerOrOwner();
 /// @title An abstract EncryptionOracle that receives requests and posts results for reencryption
 /// @notice You must implement your encryption suite when inheriting from this contract
 /// @dev DOES NOT currently validate reencryption results OR implement fees for the medusa oracle network
-abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownable, Pausable {
+abstract contract EncryptionOracle is
+    ThresholdNetwork,
+    IEncryptionOracle,
+    Ownable,
+    Pausable
+{
     /// @notice relayer that is trusted to deliver reencryption results
     address public relayer;
 
@@ -116,7 +63,9 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     /// @dev Verify the key by checking all DKG contracts deployed by Medusa operators
     /// @param _distKey An (x, y) point on an elliptic curve representing a public key previously created by medusa nodes
     /// @param _relayer that is trusted to deliver reencryption results
-    constructor(G1Point memory _distKey, address _relayer) ThresholdNetwork(_distKey) {
+    constructor(G1Point memory _distKey, address _relayer)
+        ThresholdNetwork(_distKey)
+    {
         relayer = _relayer;
     }
 
@@ -137,8 +86,19 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
         whenNotPaused
         returns (uint256)
     {
-        uint256 label = uint256(sha256(abi.encodePacked(distKey.x, distKey.y, msg.sender, _encryptor)));
-        if (!Bn128.dleqverify(_cipher.random, _cipher.random2, _cipher.dleq, label)) {
+        uint256 label = uint256(
+            sha256(
+                abi.encodePacked(distKey.x, distKey.y, msg.sender, _encryptor)
+            )
+        );
+        if (
+            !Bn128.dleqverify(
+                _cipher.random,
+                _cipher.random2,
+                _cipher.dleq,
+                label
+            )
+        ) {
             revert InvalidCiphertextProof();
         }
         uint256 id = newCipherId();
@@ -160,7 +120,10 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     {
         /// @custom:todo check correct key
         uint256 requestId = newRequestId();
-        PendingRequest memory pr = PendingRequest(msg.sender, uint96(msg.value));
+        PendingRequest memory pr = PendingRequest(
+            msg.sender,
+            uint96(msg.value)
+        );
         pendingRequests[requestId] = pr;
         emit ReencryptionRequest(_cipherId, requestId, _publicKey, pr);
         return requestId;
@@ -171,39 +134,76 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     /// @param _requestId the pending request id; used to callback the correct client
     /// @param _cipher The reencryption result for the request
     /// @return true if the client callback succeeds, otherwise reverts with OracleResultFailed
-    function deliverReencryption(uint256 _requestId, ReencryptedCipher calldata _cipher)
-        external
-        whenNotPaused
-        onlyRelayer
-        returns (bool)
-    {
-        /// @custom:todo We need to verify a threshold signature to verify the cipher result
-        if (!requestExists(_requestId)) {
+    function deliverReencryption(
+        uint256 _requestId,
+        ReencryptedCipher calldata _cipher
+    ) external whenNotPaused onlyRelayer returns (bool) {
+        PendingRequest memory pr = pendingRequests[_requestId];
+        if (pr.client == address(0)) {
             revert RequestDoesNotExist();
         }
-        PendingRequest memory pr = pendingRequests[_requestId];
         delete pendingRequests[_requestId];
-        IEncryptionClient client = IEncryptionClient(pr.client);
 
-        // Note: This should be safe from reentrancy attacks because we delete the pending request before paying/calling the relayer
-        (bool sent,) = msg.sender.call{value: pr.gasReimbursement}("");
-        if (!sent) {
-            revert OracleResultFailed("Failed to send gas reimbursement");
+        return deliverCallback(_requestId, _cipher, pr);
+    }
+
+    /// @notice Used to estimate gas for a callback before a request has been sent
+    /// @param _requestId the pending request id; used to callback the correct client
+    /// @param _cipher The reencryption result for the request
+    /// @param callbackRecipient Address of client contract to simulate the call against
+    /// @return true if the client callback succeeds, otherwise reverts with OracleResultFailed
+    function estimateDeliverReencryption(
+        uint256 _requestId,
+        ReencryptedCipher calldata _cipher,
+        address callbackRecipient
+    ) external whenNotPaused onlyRelayer returns (bool) {
+        PendingRequest memory pr = pendingRequests[_requestId];
+        if (pr.client != address(0)) {
+            delete pendingRequests[_requestId];
+        } else {
+            pr.client = callbackRecipient;
         }
 
-        try client.oracleResult(_requestId, _cipher) {
-            return true;
-        } catch Error(string memory reason) {
-            revert OracleResultFailed(reason);
-        } catch {
-            revert OracleResultFailed("Client does not support oracleResult() method");
-        }
+        return deliverCallback(_requestId, _cipher, pr);
     }
 
     /// @notice The relayer or owner updates the relayer address
     /// @param _newRelayer The address of the new relayer
-    function updateRelayer(address _newRelayer) external whenNotPaused onlyRelayerOrOwner {
+    function updateRelayer(address _newRelayer)
+        external
+        whenNotPaused
+        onlyRelayerOrOwner
+    {
         relayer = _newRelayer;
+    }
+
+    /// @notice Pays the relayer and delivers the callback to the client
+    /// @param requestId the pending request id; used to callback the correct client
+    /// @param cipher The reencryption result for the request
+    /// @param pr The PendingRequest with client address to call
+    /// @return true if the client callback succeeds, otherwise reverts with OracleResultFailed
+    function deliverCallback(
+        uint256 requestId,
+        ReencryptedCipher memory cipher,
+        PendingRequest memory pr
+    ) private returns (bool) {
+        IEncryptionClient client = IEncryptionClient(pr.client);
+
+        // Note: This should be safe from reentrancy attacks because we delete the pending request before paying/calling the relayer
+        (bool sent, ) = msg.sender.call{value: pr.gasReimbursement}("");
+        if (!sent) {
+            revert OracleResultFailed("Failed to send gas reimbursement");
+        }
+
+        try client.oracleResult(requestId, cipher) {
+            return true;
+        } catch Error(string memory reason) {
+            revert OracleResultFailed(reason);
+        } catch {
+            revert OracleResultFailed(
+                "Client does not support oracleResult() method"
+            );
+        }
     }
 
     function newCipherId() private returns (uint256) {
@@ -214,10 +214,5 @@ abstract contract EncryptionOracle is ThresholdNetwork, IEncryptionOracle, Ownab
     function newRequestId() private returns (uint256) {
         requestNonce += 1;
         return requestNonce;
-    }
-
-    function requestExists(uint256 id) private view returns (bool) {
-        PendingRequest memory pr = pendingRequests[id];
-        return pr.client != address(0);
     }
 }

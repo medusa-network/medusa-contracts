@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+// SPDX-License-Identifier: MIT AND Apache-2.0
+pragma solidity ^0.8.19;
 
-import {Ciphertext, IEncryptionOracle as IO} from "../src/EncryptionOracle.sol";
+import {Ciphertext, IEncryptionOracle as IO} from "../src/interfaces/IEncryptionOracle.sol";
 import {BN254EncryptionOracle} from "../src/BN254EncryptionOracle.sol";
 import {RoleACL} from "../src/RoleACL.sol";
 import {Bn128, G1Point} from "../src/Bn128.sol";

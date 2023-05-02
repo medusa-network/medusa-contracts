@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+// SPDX-License-Identifier: MIT AND Apache-2.0
+pragma solidity ^0.8.19;
 
 import "forge-std/Script.sol";
 import {OracleFactory} from "../src/OracleFactory.sol";
@@ -15,7 +15,10 @@ contract DeployBN254EncryptionOracle is BaseScript {
         vm.startBroadcast(deployerPrivateKey);
 
         OracleFactory factory = OracleFactory(getOracleFactoryAddress());
-        factory.deployReencryption_BN254_G1_HGAMAL(getDistributedKey(), relayer);
+        factory.deployReencryption_BN254_G1_HGAMAL(
+            getDistributedKey(),
+            relayer
+        );
         vm.stopBroadcast();
     }
 

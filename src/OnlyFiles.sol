@@ -1,12 +1,9 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+// SPDX-License-Identifier: MIT AND Apache-2.0
+pragma solidity ^0.8.19;
 
-import {BN254EncryptionOracle as Oracle} from "./BN254EncryptionOracle.sol";
-import {IEncryptionClient, Ciphertext, ReencryptedCipher} from "./EncryptionOracle.sol";
-import {G1Point} from "./Bn128.sol";
+import {MedusaClient, IEncryptionClient, IEncryptionOracle, Ciphertext, ReencryptedCipher, G1Point} from "./MedusaClient.sol";
 import {PullPayment} from "@openzeppelin/contracts/security/PullPayment.sol";
 
-error CallbackNotAuthorized();
 error ListingDoesNotExist();
 error InsufficentFunds();
 
@@ -16,29 +13,31 @@ struct Listing {
     string uri;
 }
 
-contract MedusaFans is IEncryptionClient, PullPayment {
-    /// @notice The Encryption Oracle Instance
-    Oracle public oracle;
-
+contract OnlyFiles is MedusaClient, PullPayment {
     /// @notice A mapping from cipherId to listing
     mapping(uint256 => Listing) public listings;
 
-    event ListingDecryption(uint256 indexed requestId, ReencryptedCipher ciphertext);
-    event NewListing(
-        address indexed seller, uint256 indexed cipherId, string name, string description, uint256 price, string uri
+    event ListingDecryption(
+        uint256 indexed requestId,
+        ReencryptedCipher reencryptedCipher
     );
-    event NewSale(address indexed buyer, address indexed seller, uint256 requestId, uint256 cipherId);
+    event NewListing(
+        address indexed seller,
+        uint256 indexed cipherId,
+        Ciphertext ciphertext,
+        string name,
+        string description,
+        uint256 price,
+        string uri
+    );
+    event NewSale(
+        address indexed buyer,
+        address indexed seller,
+        uint256 requestId,
+        uint256 cipherId
+    );
 
-    modifier onlyOracle() {
-        if (msg.sender != address(oracle)) {
-            revert CallbackNotAuthorized();
-        }
-        _;
-    }
-
-    constructor(Oracle _oracle) {
-        oracle = _oracle;
-    }
+    constructor(IEncryptionOracle _oracle) MedusaClient(_oracle) {}
 
     /// @notice Create a new listing
     /// @dev Submits a ciphertext to the oracle, stores a listing, and emits an event
@@ -52,14 +51,26 @@ contract MedusaFans is IEncryptionClient, PullPayment {
     ) external returns (uint256) {
         uint256 cipherId = oracle.submitCiphertext(cipher, msg.sender);
         listings[cipherId] = Listing(msg.sender, price, uri);
-        emit NewListing(msg.sender, cipherId, name, description, price, uri);
+        emit NewListing(
+            msg.sender,
+            cipherId,
+            cipher,
+            name,
+            description,
+            price,
+            uri
+        );
         return cipherId;
     }
 
     /// @notice Pay for a listing
     /// @dev Buyer pays the price for the listing, which can be withdrawn by the seller later; emits an event
     /// @return requestId The id of the reencryption request associated with the purchase
-    function buyListing(uint256 cipherId, G1Point calldata buyerPublicKey) external payable returns (uint256) {
+    function buyListing(uint256 cipherId, G1Point calldata buyerPublicKey)
+        external
+        payable
+        returns (uint256)
+    {
         Listing memory listing = listings[cipherId];
         if (listing.seller == address(0)) {
             revert ListingDoesNotExist();
@@ -67,14 +78,20 @@ contract MedusaFans is IEncryptionClient, PullPayment {
         if (msg.value < listing.price) {
             revert InsufficentFunds();
         }
+
         _asyncTransfer(listing.seller, listing.price);
-        uint256 requestId = oracle.requestReencryption{value: msg.value - listing.price}(cipherId, buyerPublicKey);
+        uint256 requestId = oracle.requestReencryption{
+            value: msg.value - listing.price
+        }(cipherId, buyerPublicKey);
+
         emit NewSale(msg.sender, listing.seller, requestId, cipherId);
         return requestId;
     }
 
-    /// @inheritdoc IEncryptionClient
-    function oracleResult(uint256 requestId, ReencryptedCipher calldata cipher) external onlyOracle {
+    function processOracleResult(
+        uint256 requestId,
+        ReencryptedCipher memory cipher
+    ) internal override {
         emit ListingDecryption(requestId, cipher);
     }
 
