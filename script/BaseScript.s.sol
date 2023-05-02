@@ -24,28 +24,48 @@ abstract contract BaseScript is Script {
         return vm.envAddress("DKG_ADDRESS");
     }
 
-    function getOracleFactoryAddressFromBroadcast() internal returns (address) {
+    function getOracleFactoryAddressFromBroadcast()
+        internal
+        returns (address)
+    {
         string memory filename = string(
-            abi.encodePacked("broadcast/DeployOracleFactory.s.sol/", block.chainid.toString(), "/run-latest.json")
+            abi.encodePacked(
+                "broadcast/DeployOracleFactory.s.sol/",
+                block.chainid.toString(),
+                "/run-latest.json"
+            )
         );
         string memory json = vm.readFile(filename);
-        address factoryAddr = json.readAddress(".transactions[0].contractAddress");
+        address factoryAddr =
+            json.readAddress(".transactions[0].contractAddress");
         return factoryAddr;
     }
 
     function getDKGFactoryAddressFromBroadcast() internal returns (address) {
-        string memory filename =
-            string(abi.encodePacked("broadcast/DeployDKGFactory.s.sol/", block.chainid.toString(), "/run-latest.json"));
+        string memory filename = string(
+            abi.encodePacked(
+                "broadcast/DeployDKGFactory.s.sol/",
+                block.chainid.toString(),
+                "/run-latest.json"
+            )
+        );
         string memory json = vm.readFile(filename);
-        address factoryAddr = json.readAddress(".transactions[0].contractAddress");
+        address factoryAddr =
+            json.readAddress(".transactions[0].contractAddress");
         return factoryAddr;
     }
 
     function getDKGInstanceAddressFromBroadcast() internal returns (address) {
-        string memory filename =
-            string(abi.encodePacked("broadcast/DeployDKGInstance.s.sol/", block.chainid.toString(), "/run-latest.json"));
+        string memory filename = string(
+            abi.encodePacked(
+                "broadcast/DeployDKGInstance.s.sol/",
+                block.chainid.toString(),
+                "/run-latest.json"
+            )
+        );
         string memory json = vm.readFile(filename);
-        address factoryAddr = json.readAddress(".transactions[0].additionalContracts[0].address");
+        address factoryAddr =
+            json.readAddress(".transactions[0].additionalContracts[0].address");
         return factoryAddr;
     }
 }

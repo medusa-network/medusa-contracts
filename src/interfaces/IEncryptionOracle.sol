@@ -6,9 +6,7 @@ import {G1Point, DleqProof} from "../Bn128.sol";
 
 /// @notice An enum of supported encryption suites
 /// @dev The format is CURVE_KEYGROUP_ENCRYPTION
-enum Suite {
-    BN254_KEYG1_HGAMAL
-}
+enum Suite {BN254_KEYG1_HGAMAL}
 
 /// @notice A 32-byte encrypted ciphertext that a client submits to Medusa
 struct Ciphertext {
@@ -67,9 +65,7 @@ interface IEncryptionOracle is IThresholdNetwork {
     /// @notice Emitted when a new cipher text is registered with medusa
     /// @dev Broadcasts the id, cipher text, and client or owner of the cipher text
     event NewCiphertext(
-        uint256 indexed id,
-        Ciphertext ciphertext,
-        address client
+        uint256 indexed id, Ciphertext ciphertext, address client
     );
 
     /// @notice Emitted when a new request is sent to medusa

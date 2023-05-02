@@ -1,7 +1,18 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import {DealBundle, IDKG, DKG, NotAuthorized, NotRegistered, AlreadyRegistered, ParticipantLimit, InvalidPhase, InvalidSharesCount, InvalidCommitmentsCount} from "../src/DKG.sol";
+import {
+    DealBundle,
+    IDKG,
+    DKG,
+    NotAuthorized,
+    NotRegistered,
+    AlreadyRegistered,
+    ParticipantLimit,
+    InvalidPhase,
+    InvalidSharesCount,
+    InvalidCommitmentsCount
+} from "../src/DKG.sol";
 import {DKGFactory} from "../src/DKGFactory.sol";
 import {Bn128, G1Point, DleqProof} from "../src/Bn128.sol";
 import "forge-std/Test.sol";
@@ -26,13 +37,13 @@ contract DKGTest is Test {
     }
 
     function fakeDleq() public view returns (FakeDleq memory) {
-        uint256 f = 21888242871839275222246405745257275088548364400416034343698204186575808495133;
-        uint256 e = 21888242871839275222246405745257275088548364400416034343698204186575808495134;
+        uint256 f =
+            21888242871839275222246405745257275088548364400416034343698204186575808495133;
+        uint256 e =
+            21888242871839275222246405745257275088548364400416034343698204186575808495134;
         G1Point memory g1 = Bn128.scalarMultiply(Bn128.g1(), f);
-        G1Point memory g2 = Bn128.scalarMultiply(
-            Bn128.scalarMultiply(Bn128.g1(), e),
-            f
-        );
+        G1Point memory g2 =
+            Bn128.scalarMultiply(Bn128.scalarMultiply(Bn128.g1(), e), f);
         return FakeDleq(g1, g2, DleqProof(f, e));
     }
 
@@ -42,7 +53,11 @@ contract DKGTest is Test {
         return DealBundle(encryptedShares, commitment);
     }
 
-    function randomPoint(uint256 offset) private view returns (G1Point memory) {
+    function randomPoint(uint256 offset)
+        private
+        view
+        returns (G1Point memory)
+    {
         uint256 fr = 19542123975320942039841207452351244 + offset;
         return Bn128.scalarMultiply(Bn128.g1(), fr);
     }
@@ -169,10 +184,7 @@ contract DKGTest is Test {
         vm.prank(nextParticipant);
         vm.expectRevert(NotRegistered.selector);
         dkg.submitComplaintBundle(
-            address(uint160(2)),
-            bundle,
-            p1,
-            fakeProof.proof
+            address(uint160(2)), bundle, p1, fakeProof.proof
         );
     }
 
@@ -186,10 +198,7 @@ contract DKGTest is Test {
         DealBundle memory bundle = emptyDealBundle();
         vm.expectRevert(InvalidPhase.selector);
         dkg.submitComplaintBundle(
-            address(uint160(2)),
-            bundle,
-            p1,
-            fakeProof.proof
+            address(uint160(2)), bundle, p1, fakeProof.proof
         );
     }
 

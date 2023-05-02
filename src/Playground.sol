@@ -88,18 +88,12 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
     }
 
     event NewLogCipher(
-        uint256 indexed id,
-        uint256 rx,
-        uint256 ry,
-        uint256 cipher
+        uint256 indexed id, uint256 rx, uint256 ry, uint256 cipher
     );
 
     function logCipher(uint256 id, Ciphertext calldata _cipher) external {
         emit NewLogCipher(
-            id,
-            _cipher.random.x,
-            _cipher.random.y,
-            _cipher.cipher
+            id, _cipher.random.x, _cipher.random.y, _cipher.cipher
         );
     }
 
@@ -212,15 +206,9 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
         DleqProof calldata _proof,
         uint256 _label
     ) public view returns (bool) {
-        return
-            Bn128.dleqVerifyWithBases(
-                _base1,
-                _base2,
-                _rg1,
-                _rg2,
-                _proof,
-                _label
-            );
+        return Bn128.dleqVerifyWithBases(
+            _base1, _base2, _rg1, _rg2, _proof, _label
+        );
     }
 
     function shathis(
@@ -240,8 +228,8 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
         address addr,
         uint256 expect
     ) public pure returns (bool) {
-        uint256 fs = uint256(sha256(abi.encodePacked(p1.x, p1.y, addr))) %
-            Bn128.r;
+        uint256 fs =
+            uint256(sha256(abi.encodePacked(p1.x, p1.y, addr))) % Bn128.r;
         if (fs == expect) {
             return true;
         }
