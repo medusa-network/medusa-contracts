@@ -143,25 +143,15 @@ abstract contract EncryptionOracle is
             revert RequestDoesNotExist();
         }
         delete pendingRequests[_requestId];
-        IEncryptionClient client = IEncryptionClient(pr.client);
 
-        // Note: This should be safe from reentrancy attacks because we delete the pending request before paying/calling the relayer
-        (bool sent, ) = msg.sender.call{value: pr.gasReimbursement}("");
-        if (!sent) {
-            revert OracleResultFailed("Failed to send gas reimbursement");
-        }
-
-        try client.oracleResult(_requestId, _cipher) {
-            return true;
-        } catch Error(string memory reason) {
-            revert OracleResultFailed(reason);
-        } catch {
-            revert OracleResultFailed(
-                "Client does not support oracleResult() method"
-            );
-        }
+        return deliverCallback(_requestId, _cipher, pr);
     }
 
+    /// @notice Used to estimate gas for a callback before a request has been sent
+    /// @param _requestId the pending request id; used to callback the correct client
+    /// @param _cipher The reencryption result for the request
+    /// @param callbackRecipient Address of client contract to simulate the call against
+    /// @return true if the client callback succeeds, otherwise reverts with OracleResultFailed
     function estimateDeliverReencryption(
         uint256 _requestId,
         ReencryptedCipher calldata _cipher,
@@ -172,25 +162,9 @@ abstract contract EncryptionOracle is
             delete pendingRequests[_requestId];
         } else {
             pr.client = callbackRecipient;
-            pr.gasReimbursement = 1;
-        }
-        IEncryptionClient client = IEncryptionClient(pr.client);
-
-        // Note: This should be safe from reentrancy attacks because we delete the pending request before paying/calling the relayer
-        (bool sent, ) = msg.sender.call{value: pr.gasReimbursement}("");
-        if (!sent) {
-            revert OracleResultFailed("Failed to send gas reimbursement");
         }
 
-        try client.oracleResult(_requestId, _cipher) {
-            return true;
-        } catch Error(string memory reason) {
-            revert OracleResultFailed(reason);
-        } catch {
-            revert OracleResultFailed(
-                "Client does not support oracleResult() method"
-            );
-        }
+        return deliverCallback(_requestId, _cipher, pr);
     }
 
     /// @notice The relayer or owner updates the relayer address
@@ -203,6 +177,35 @@ abstract contract EncryptionOracle is
         relayer = _newRelayer;
     }
 
+    /// @notice Pays the relayer and delivers the callback to the client
+    /// @param requestId the pending request id; used to callback the correct client
+    /// @param cipher The reencryption result for the request
+    /// @param pr The PendingRequest with client address to call
+    /// @return true if the client callback succeeds, otherwise reverts with OracleResultFailed
+    function deliverCallback(
+        uint256 requestId,
+        ReencryptedCipher memory cipher,
+        PendingRequest memory pr
+    ) private returns (bool) {
+        IEncryptionClient client = IEncryptionClient(pr.client);
+
+        // Note: This should be safe from reentrancy attacks because we delete the pending request before paying/calling the relayer
+        (bool sent, ) = msg.sender.call{value: pr.gasReimbursement}("");
+        if (!sent) {
+            revert OracleResultFailed("Failed to send gas reimbursement");
+        }
+
+        try client.oracleResult(requestId, cipher) {
+            return true;
+        } catch Error(string memory reason) {
+            revert OracleResultFailed(reason);
+        } catch {
+            revert OracleResultFailed(
+                "Client does not support oracleResult() method"
+            );
+        }
+    }
+
     function newCipherId() private returns (uint256) {
         cipherNonce += 1;
         return cipherNonce;
@@ -211,10 +214,5 @@ abstract contract EncryptionOracle is
     function newRequestId() private returns (uint256) {
         requestNonce += 1;
         return requestNonce;
-    }
-
-    function requestExists(uint256 id) private view returns (bool) {
-        PendingRequest memory pr = pendingRequests[id];
-        return pr.client != address(0);
     }
 }
