@@ -1,6 +1,5 @@
 name: Publish contracts to NPM registry
 on:
-  # push:
   release:
     types: [created]
 jobs:
@@ -20,7 +19,6 @@ jobs:
         with:
           version: 8.2.0
 
-          # TODO: Remove '--no-git-checks'
-      - run: pnpm publish --access public --no-git-checks
+      - run: pnpm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
