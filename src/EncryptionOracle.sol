@@ -5,7 +5,13 @@ import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ThresholdNetwork} from "./DKG.sol";
 import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
-import {IEncryptionOracle, Ciphertext, ReencryptedCipher, PendingRequest, Suite} from "./interfaces/IEncryptionOracle.sol";
+import {
+    IEncryptionOracle,
+    Ciphertext,
+    ReencryptedCipher,
+    PendingRequest,
+    Suite
+} from "./interfaces/IEncryptionOracle.sol";
 import {IEncryptionClient} from "./interfaces/IEncryptionClient.sol";
 
 /// @notice Reverts when delivering a response for a non-existent request
@@ -93,10 +99,7 @@ abstract contract EncryptionOracle is
         );
         if (
             !Bn128.dleqverify(
-                _cipher.random,
-                _cipher.random2,
-                _cipher.dleq,
-                label
+                _cipher.random, _cipher.random2, _cipher.dleq, label
             )
         ) {
             revert InvalidCiphertextProof();
@@ -120,10 +123,7 @@ abstract contract EncryptionOracle is
     {
         /// @custom:todo check correct key
         uint256 requestId = newRequestId();
-        PendingRequest memory pr = PendingRequest(
-            msg.sender,
-            uint96(msg.value)
-        );
+        PendingRequest memory pr = PendingRequest(msg.sender, uint96(msg.value));
         pendingRequests[requestId] = pr;
         emit ReencryptionRequest(_cipherId, requestId, _publicKey, pr);
         return requestId;
@@ -190,7 +190,7 @@ abstract contract EncryptionOracle is
         IEncryptionClient client = IEncryptionClient(pr.client);
 
         // Note: This should be safe from reentrancy attacks because we delete the pending request before paying/calling the relayer
-        (bool sent, ) = msg.sender.call{value: pr.gasReimbursement}("");
+        (bool sent,) = msg.sender.call{value: pr.gasReimbursement}("");
         if (!sent) {
             revert OracleResultFailed("Failed to send gas reimbursement");
         }

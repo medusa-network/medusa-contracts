@@ -16,7 +16,9 @@ contract AddAuthorizedNodes is BaseScript {
         DKGFactory factory = DKGFactory(getDKGFactoryAddress());
 
         for (uint256 i = 1; i <= 3; i++) {
-            address node = vm.envAddress(string(abi.encodePacked("NODE_", i.toString(), "_ADDRESS")));
+            address node = vm.envAddress(
+                string(abi.encodePacked("NODE_", i.toString(), "_ADDRESS"))
+            );
             if (!factory.isAuthorizedNode(node)) {
                 factory.addAuthorizedNode(node);
             }

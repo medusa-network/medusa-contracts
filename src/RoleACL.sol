@@ -1,11 +1,19 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import {IEncryptionOracle as IO, Ciphertext, ReencryptedCipher} from "./interfaces/IEncryptionOracle.sol";
+import {
+    IEncryptionOracle as IO,
+    Ciphertext,
+    ReencryptedCipher
+} from "./interfaces/IEncryptionOracle.sol";
 import {IEncryptionClient} from "./interfaces/IEncryptionClient.sol";
 import {G1Point} from "./Bn128.sol";
-import {AccessControlEnumerable} from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
-import {AccessControl, IAccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {AccessControlEnumerable} from
+    "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import {
+    AccessControl,
+    IAccessControl
+} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 // A simple role based ACL that broadcast a ciphertext when requested to all
 // current roles. It doesn't support yet broadcasting only to new role members
@@ -34,10 +42,7 @@ contract RoleACL is AccessControlEnumerable, IEncryptionClient {
         uint256 _requestId,
         ReencryptedCipher calldata _cipher
     ) external {
-        require(
-            msg.sender == address(oracle),
-            "only oracle can submit results"
-        );
+        require(msg.sender == address(oracle), "only oracle can submit results");
         // TODO : some checks ? do we handle pending requests here etc ?
         emit NewOracleResult(_requestId, _cipher);
     }

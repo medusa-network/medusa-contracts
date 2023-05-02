@@ -54,7 +54,10 @@ struct DealBundle {
 
 /// @notice An interface telling which addresses can participate to a DKG
 interface IDKGMembership {
-    function isAuthorizedNode(address participant) external view returns (bool);
+    function isAuthorizedNode(address participant)
+        external
+        view
+        returns (bool);
 }
 
 interface IDKG {
@@ -340,16 +343,14 @@ contract DKG is ThresholdNetwork, IDKG {
         {
             // avoiding stack too deep error
             // Decrypt the share
-            uint256 hashed = uint256(
-                sha256(abi.encodePacked(sharedKey.x, sharedKey.y))
-            );
+            uint256 hashed =
+                uint256(sha256(abi.encodePacked(sharedKey.x, sharedKey.y)));
             //// indices start at value 1 so offset by one when referring in the array
             uint256 cipher = badBundle.encryptedShares[complainerIdx - 1];
             uint256 share = hashed ^ cipher;
             // Verify it is consistent with the polynomial setup by the dealer
             G1Point memory eval1 = Bn128.publicPolyEval(
-                badBundle.commitment,
-                uint256(complainerIdx)
+                badBundle.commitment, uint256(complainerIdx)
             );
             G1Point memory eval2 = Bn128.scalarMultiply(Bn128.g1(), share);
             if (Bn128.g1Equal(eval1, eval2) == true) {
@@ -435,8 +436,7 @@ contract DKG is ThresholdNetwork, IDKG {
         for (uint256 i = 0; i < db.commitment.length; i++) {
             flatten[i] = [db.commitment[i].x, db.commitment[i].y];
         }
-        return
-            uint256(keccak256(abi.encodePacked(db.encryptedShares, flatten)));
+        return uint256(keccak256(abi.encodePacked(db.encryptedShares, flatten)));
     }
 
     function labelForComplaint() public pure returns (uint256) {
