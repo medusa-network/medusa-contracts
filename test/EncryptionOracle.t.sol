@@ -13,7 +13,8 @@ import {
     RequestDoesNotExist,
     OracleResultFailed,
     NotRelayer,
-    NotRelayerOrOwner
+    NotRelayerOrOwner,
+    InsufficientFunds
 } from "../src/EncryptionOracle.sol";
 import {MedusaClient} from "../src/MedusaClient.sol";
 import {IEncryptionClient} from "../src/interfaces/IEncryptionClient.sol";
@@ -21,8 +22,8 @@ import {Suite} from "../src/OracleFactory.sol";
 import {G1Point, DleqProof, Bn128} from "../src/Bn128.sol";
 
 contract MockEncryptionOracle is EncryptionOracle {
-    constructor(G1Point memory _distKey, address _relayer)
-        EncryptionOracle(_distKey, _relayer)
+    constructor(G1Point memory _distKey, address _relayer, uint96 _oracleFee)
+        EncryptionOracle(_distKey, _relayer, _oracleFee)
     {}
 
     function suite() external pure override returns (Suite) {
@@ -69,6 +70,7 @@ contract MockReentrantRelayer {
 contract EncryptionOracleTest is Test {
     MockEncryptionOracle public oracle;
     address public relayer = makeAddr("relayer");
+    uint96 public oracleFee = 0.001 ether;
 
     event NewCiphertext(
         uint256 indexed id, Ciphertext ciphertext, address client
@@ -81,7 +83,7 @@ contract EncryptionOracleTest is Test {
     );
 
     function setUp() public {
-        oracle = new MockEncryptionOracle(dummyPublicKey(), relayer);
+        oracle = new MockEncryptionOracle(dummyPublicKey(), relayer, oracleFee);
     }
 
     function dummyCiphertext() private pure returns (Ciphertext memory) {
@@ -167,6 +169,47 @@ contract EncryptionOracleTest is Test {
         assertEq(oracle.relayer(), relayer);
     }
 
+    function testUpdateOracleFee() public {
+        uint96 newFee = oracle.oracleFee() + 1;
+        oracle.updateOracleFee(newFee);
+        assertEq(oracle.oracleFee(), newFee);
+    }
+
+    function testCannotUpdateOracleFeeIfNotOwner() public {
+        uint96 oldFee = oracle.oracleFee();
+        uint96 newFee = oldFee + 1;
+
+        address notOwner = makeAddr("notOwner");
+        vm.expectRevert("Ownable: caller is not the owner");
+        vm.prank(notOwner);
+        oracle.updateOracleFee(newFee);
+
+        assertEq(oracle.oracleFee(), oldFee);
+    }
+
+    function testWithdrawFees() public {
+        uint256 relayerBalanceBefore = relayer.balance;
+        vm.deal(address(oracle), 1 ether);
+
+        vm.prank(relayer);
+        oracle.withdrawFees();
+
+        assertEq(relayer.balance, relayerBalanceBefore + 1 ether);
+    }
+
+    function testCannotWithdrawFeesIfNotRelayer() public {
+        uint256 relayerBalanceBefore = relayer.balance;
+        vm.deal(address(oracle), 1 ether);
+
+        address notRelayer = makeAddr("notRelayer");
+        vm.prank(notRelayer);
+        vm.expectRevert(NotRelayer.selector);
+        oracle.withdrawFees();
+
+        assertEq(relayer.balance, relayerBalanceBefore);
+        assertEq(address(oracle).balance, 1 ether);
+    }
+
     function testSubmitCipherText() public {
         /// @custom:todo implement DLEQ valid proof for it
         // Ciphertext memory cipher = dummyCiphertext();
@@ -178,21 +221,35 @@ contract EncryptionOracleTest is Test {
         // assertEq(cipherId, 2);
     }
 
+    function testCannotSubmitCipherTextIfInsufficientFunds() public {
+        Ciphertext memory cipher = dummyCiphertext();
+
+        // Cannot use expectRevert here due to 'low-level' call required when specifying {value: oracle.submissionFee() - 1}
+        // See the section 'Gotcha: Usage with low-level calls' https://book.getfoundry.sh/cheatcodes/expect-revert?highlight=expectrevert#expectrevert
+        (bool success, bytes memory returndata) = address(oracle).call{
+            value: oracle.submissionFee() - 1
+        }(
+            abi.encodePacked(
+                oracle.submitCiphertext.selector,
+                abi.encode(cipher, address(this))
+            )
+        );
+        assertFalse(success);
+        assertEq(bytes4(returndata), InsufficientFunds.selector);
+    }
+
     function testRequestReencryption() public {
         G1Point memory publicKey = dummyPublicKey();
         uint256 randomCipherId = 123312;
         uint96 gasReimbursement = 1 ether;
+        uint96 fee = gasReimbursement + oracle.reencryptionFee();
 
         vm.expectEmit(true, false, false, true);
         emit ReencryptionRequest(
-            randomCipherId,
-            1,
-            publicKey,
-            PendingRequest(address(this), gasReimbursement)
+            randomCipherId, 1, publicKey, PendingRequest(address(this), fee)
         );
-        uint256 requestId = oracle.requestReencryption{value: gasReimbursement}(
-            randomCipherId, publicKey
-        );
+        uint256 requestId =
+            oracle.requestReencryption{value: fee}(randomCipherId, publicKey);
         assertEq(requestId, 1);
 
         uint256 otherRandomCipherId = 45687456;
@@ -201,12 +258,30 @@ contract EncryptionOracleTest is Test {
             otherRandomCipherId,
             2,
             publicKey,
-            PendingRequest(address(this), gasReimbursement)
+            PendingRequest(address(this), fee)
         );
-        requestId = oracle.requestReencryption{value: gasReimbursement}(
+        requestId = oracle.requestReencryption{value: fee}(
             otherRandomCipherId, publicKey
         );
         assertEq(requestId, 2);
+    }
+
+    function testCannotRequestReencryptionIfInsufficientFunds() public {
+        G1Point memory publicKey = dummyPublicKey();
+        uint256 randomCipherId = 123312;
+
+        // Cannot use expectRevert here due to 'low-level' call required when specifying {value: oracle.reencryptionFee() - 1}
+        // See the section 'Gotcha: Usage with low-level calls' https://book.getfoundry.sh/cheatcodes/expect-revert?highlight=expectrevert#expectrevert
+        (bool success, bytes memory returndata) = address(oracle).call{
+            value: oracle.reencryptionFee() - 1
+        }(
+            abi.encodePacked(
+                oracle.requestReencryption.selector,
+                abi.encode(randomCipherId, publicKey)
+            )
+        );
+        assertFalse(success);
+        assertEq(bytes4(returndata), InsufficientFunds.selector);
     }
 
     function testDeliverReencryption() public {
@@ -215,19 +290,19 @@ contract EncryptionOracleTest is Test {
         G1Point memory publicKey = dummyPublicKey();
         uint256 randomCipherId = 123312;
         uint96 gasReimbursement = 1 ether;
+        uint96 fee = gasReimbursement + oracle.reencryptionFee();
         MockEncryptionClient client = new MockEncryptionClient(false, oracle);
-        vm.deal(address(client), gasReimbursement);
+        vm.deal(address(client), fee);
 
         vm.prank(address(client));
-        uint256 requestId = oracle.requestReencryption{value: gasReimbursement}(
-            randomCipherId, publicKey
-        );
+        uint256 requestId =
+            oracle.requestReencryption{value: fee}(randomCipherId, publicKey);
 
         uint256 relayerBalanceBefore = relayer.balance;
         vm.prank(relayer);
         bool result = oracle.deliverReencryption(requestId, cipher);
         assert(result);
-        assert(relayer.balance == relayerBalanceBefore + gasReimbursement);
+        assert(relayer.balance == relayerBalanceBefore + fee);
     }
 
     function testCannotDeliverReencryptionIfNotRelayer() public {
@@ -253,8 +328,10 @@ contract EncryptionOracleTest is Test {
         G1Point memory publicKey = dummyPublicKey();
         uint256 randomCipherId = 123312;
 
+        oracle.updateOracleFee(0);
         uint256 requestId =
             oracle.requestReencryption(randomCipherId, publicKey);
+
         vm.expectRevert(
             abi.encodeWithSelector(
                 OracleResultFailed.selector,
@@ -273,7 +350,9 @@ contract EncryptionOracleTest is Test {
 
         MockEncryptionClient client = new MockEncryptionClient(true, oracle);
 
+        oracle.updateOracleFee(0);
         vm.prank(address(client));
+
         uint256 requestId =
             oracle.requestReencryption(randomCipherId, publicKey);
         vm.expectRevert(
@@ -287,7 +366,8 @@ contract EncryptionOracleTest is Test {
         MockReentrantRelayer reentrantRelayer = new MockReentrantRelayer();
         oracle = new MockEncryptionOracle(
             dummyPublicKey(),
-            address(reentrantRelayer)
+            address(reentrantRelayer),
+            oracleFee
         );
         ReencryptedCipher memory cipher = dummyReencryptedCipher();
 

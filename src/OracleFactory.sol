@@ -25,11 +25,13 @@ contract OracleFactory is Ownable {
     /// @return The id and address of the new oracle
     function deployReencryption_BN254_G1_HGAMAL(
         G1Point calldata _distKey,
-        address relayer
+        address _relayer,
+        uint96 _oracleFee
     ) external onlyOwner returns (address) {
         BN254EncryptionOracle oracle = new BN254EncryptionOracle(
             _distKey,
-            relayer
+            _relayer,
+            _oracleFee
         );
 
         oracles[address(oracle)] = true;
@@ -57,5 +59,14 @@ contract OracleFactory is Ownable {
         require(oracles[_oracle], "no oracle at this address registered");
         EncryptionOracle oracle = EncryptionOracle(_oracle);
         oracle.updateRelayer(_newRelayer);
+    }
+
+    function updateOracleFee(address _oracle, uint96 _oracleFee)
+        public
+        onlyOwner
+    {
+        require(oracles[_oracle], "no oracle at this address registered");
+        EncryptionOracle oracle = EncryptionOracle(_oracle);
+        oracle.updateOracleFee(_oracleFee);
     }
 }

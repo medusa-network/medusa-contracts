@@ -30,6 +30,9 @@ error NotRelayer();
 /// @notice Reverts when someone who is not the relayer or the owner tries to update the relayer
 error NotRelayerOrOwner();
 
+/// @notice Reverts when the oracleFee is not paid for ciphertext submission and reencryption
+error InsufficientFunds();
+
 /// @title An abstract EncryptionOracle that receives requests and posts results for reencryption
 /// @notice You must implement your encryption suite when inheriting from this contract
 /// @dev DOES NOT currently validate reencryption results OR implement fees for the medusa oracle network
@@ -40,7 +43,9 @@ abstract contract EncryptionOracle is
     Pausable
 {
     /// @notice relayer that is trusted to deliver reencryption results
-    address public relayer;
+    address public relayer; // 20 bytes -- 32 bytes packed with oracleFee
+    /// @notice fee that is rewarded to Medusa operators; submission = 1*oracleFee, reencryption = 2*oracleFee
+    uint96 public oracleFee; // 12 bytes -- 32 bytes packed with relayer
 
     /// @notice pendingRequests tracks the reencryption requests
     /// @dev We use this to determine the client to callback with the result and to store the gas reimbursement paid by the client
@@ -69,10 +74,12 @@ abstract contract EncryptionOracle is
     /// @dev Verify the key by checking all DKG contracts deployed by Medusa operators
     /// @param _distKey An (x, y) point on an elliptic curve representing a public key previously created by medusa nodes
     /// @param _relayer that is trusted to deliver reencryption results
-    constructor(G1Point memory _distKey, address _relayer)
+    /// @param _oracleFee that is rewarded to Medusa operators
+    constructor(G1Point memory _distKey, address _relayer, uint96 _oracleFee)
         ThresholdNetwork(_distKey)
     {
         relayer = _relayer;
+        oracleFee = _oracleFee;
     }
 
     function pause() external onlyOwner {
@@ -89,9 +96,13 @@ abstract contract EncryptionOracle is
     /// @return the id of the newly registered ciphertext
     function submitCiphertext(Ciphertext calldata _cipher, address _encryptor)
         external
+        payable
         whenNotPaused
         returns (uint256)
     {
+        if (msg.value < submissionFee()) {
+            revert InsufficientFunds();
+        }
         uint256 label = uint256(
             sha256(
                 abi.encodePacked(distKey.x, distKey.y, msg.sender, _encryptor)
@@ -121,6 +132,10 @@ abstract contract EncryptionOracle is
         whenNotPaused
         returns (uint256)
     {
+        if (msg.value < reencryptionFee()) {
+            revert InsufficientFunds();
+        }
+
         /// @custom:todo check correct key
         uint256 requestId = newRequestId();
         PendingRequest memory pr = PendingRequest(msg.sender, uint96(msg.value));
@@ -167,6 +182,12 @@ abstract contract EncryptionOracle is
         return deliverCallback(_requestId, _cipher, pr);
     }
 
+    /// @notice The relayer withdraws all fees accumulated
+    function withdrawFees() external whenNotPaused onlyRelayer returns (bool) {
+        (bool sent,) = msg.sender.call{value: address(this).balance}("");
+        return sent;
+    }
+
     /// @notice The relayer or owner updates the relayer address
     /// @param _newRelayer The address of the new relayer
     function updateRelayer(address _newRelayer)
@@ -175,6 +196,16 @@ abstract contract EncryptionOracle is
         onlyRelayerOrOwner
     {
         relayer = _newRelayer;
+    }
+
+    /// @notice The owner updates the oracleFee
+    /// @param _oracleFee The new oracleFee
+    function updateOracleFee(uint96 _oracleFee)
+        external
+        whenNotPaused
+        onlyOwner
+    {
+        oracleFee = _oracleFee;
     }
 
     /// @notice Pays the relayer and delivers the callback to the client
@@ -190,7 +221,7 @@ abstract contract EncryptionOracle is
         IEncryptionClient client = IEncryptionClient(pr.client);
 
         // Note: This should be safe from reentrancy attacks because we delete the pending request before paying/calling the relayer
-        (bool sent,) = msg.sender.call{value: pr.gasReimbursement}("");
+        (bool sent,) = msg.sender.call{value: address(this).balance}("");
         if (!sent) {
             revert OracleResultFailed("Failed to send gas reimbursement");
         }
@@ -204,6 +235,14 @@ abstract contract EncryptionOracle is
                 "Client does not support oracleResult() method"
             );
         }
+    }
+
+    function submissionFee() public view returns (uint96) {
+        return oracleFee;
+    }
+
+    function reencryptionFee() public view returns (uint96) {
+        return oracleFee * 2;
     }
 
     function newCipherId() private returns (uint256) {

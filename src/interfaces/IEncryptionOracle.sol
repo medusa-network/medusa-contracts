@@ -24,10 +24,10 @@ struct ReencryptedCipher {
 
 /// @notice A pending reencryption request
 /// @dev client client's address to callback with a response
-/// @dev gasReimbursement the amount of native currency to reimburse the relayer for gas to submit a result onchain
+/// @dev fee the amount of native currency paid to cover reencryption fee and reimburse the relayer for gas
 struct PendingRequest {
     address client; // 20 bytes ---------- 32 bytes packed; the entire struct fits in 1 storage slot
-    uint96 gasReimbursement; // 12 bytes |
+    uint96 fee; //     12 bytes          |
 }
 
 interface IEncryptionOracle is IThresholdNetwork {
@@ -44,6 +44,7 @@ interface IEncryptionOracle is IThresholdNetwork {
     /// The ciphertext proof is checked and if correct, will be signalled to Medusa.
     function submitCiphertext(Ciphertext calldata _cipher, address _encryptor)
         external
+        payable
         returns (uint256);
 
     function deliverReencryption(

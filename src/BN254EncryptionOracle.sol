@@ -6,8 +6,8 @@ import {EncryptionOracle} from "./EncryptionOracle.sol";
 import {G1Point} from "./Bn128.sol";
 
 contract BN254EncryptionOracle is EncryptionOracle {
-    constructor(G1Point memory _distKey, address _relayer)
-        EncryptionOracle(_distKey, _relayer)
+    constructor(G1Point memory _distKey, address _relayer, uint96 _oracleFee)
+        EncryptionOracle(_distKey, _relayer, _oracleFee)
     {}
 
     function suite() external pure override returns (Suite) {

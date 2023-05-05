@@ -15,7 +15,7 @@ contract RoleACLTest is Test {
 
     function setUp() public {
         address relayer = address(0);
-        oracle = new BN254EncryptionOracle(Bn128.g1Zero(), relayer);
+        oracle = new BN254EncryptionOracle(Bn128.g1Zero(), relayer, 0);
     }
 
     function testSubmitCiphertext() public {
