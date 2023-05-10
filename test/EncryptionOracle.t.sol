@@ -22,9 +22,12 @@ import {Suite} from "../src/OracleFactory.sol";
 import {G1Point, DleqProof, Bn128} from "../src/Bn128.sol";
 
 contract MockEncryptionOracle is EncryptionOracle {
-    constructor(G1Point memory _distKey, address _relayer, uint96 _oracleFee)
-        EncryptionOracle(_distKey, _relayer, _oracleFee)
-    {}
+    constructor(
+        G1Point memory _distKey,
+        address _relayer,
+        uint96 _submissionFee,
+        uint96 _reencryptionFee
+    ) EncryptionOracle(_distKey, _relayer, _submissionFee, _reencryptionFee) {}
 
     function suite() external pure override returns (Suite) {
         return Suite.BN254_KEYG1_HGAMAL;
@@ -70,7 +73,8 @@ contract MockReentrantRelayer {
 contract EncryptionOracleTest is Test {
     MockEncryptionOracle public oracle;
     address public relayer = makeAddr("relayer");
-    uint96 public oracleFee = 0.001 ether;
+    uint96 public submissionFee = 0.001 ether;
+    uint96 public reencryptionFee = 0.002 ether;
 
     event NewCiphertext(
         uint256 indexed id, Ciphertext ciphertext, address client
@@ -83,7 +87,12 @@ contract EncryptionOracleTest is Test {
     );
 
     function setUp() public {
-        oracle = new MockEncryptionOracle(dummyPublicKey(), relayer, oracleFee);
+        oracle = new MockEncryptionOracle(
+            dummyPublicKey(),
+            relayer,
+            submissionFee,
+            reencryptionFee
+        );
     }
 
     function dummyCiphertext() private pure returns (Ciphertext memory) {
@@ -169,22 +178,40 @@ contract EncryptionOracleTest is Test {
         assertEq(oracle.relayer(), relayer);
     }
 
-    function testUpdateOracleFee() public {
-        uint96 newFee = oracle.oracleFee() + 1;
-        oracle.updateOracleFee(newFee);
-        assertEq(oracle.oracleFee(), newFee);
+    function testUpdateSubmissionFee() public {
+        uint96 newFee = oracle.submissionFee() + 1;
+        oracle.updateSubmissionFee(newFee);
+        assertEq(oracle.submissionFee(), newFee);
     }
 
-    function testCannotUpdateOracleFeeIfNotOwner() public {
-        uint96 oldFee = oracle.oracleFee();
+    function testCannotUpdateSubmissionFeeIfNotOwner() public {
+        uint96 oldFee = oracle.submissionFee();
         uint96 newFee = oldFee + 1;
 
         address notOwner = makeAddr("notOwner");
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(notOwner);
-        oracle.updateOracleFee(newFee);
+        oracle.updateSubmissionFee(newFee);
 
-        assertEq(oracle.oracleFee(), oldFee);
+        assertEq(oracle.submissionFee(), oldFee);
+    }
+
+    function testUpdateReencryptionFee() public {
+        uint96 newFee = oracle.reencryptionFee() + 1;
+        oracle.updateReencryptionFee(newFee);
+        assertEq(oracle.reencryptionFee(), newFee);
+    }
+
+    function testCannotUpdateReencryptionFeeIfNotOwner() public {
+        uint96 oldFee = oracle.reencryptionFee();
+        uint96 newFee = oldFee + 1;
+
+        address notOwner = makeAddr("notOwner");
+        vm.expectRevert("Ownable: caller is not the owner");
+        vm.prank(notOwner);
+        oracle.updateReencryptionFee(newFee);
+
+        assertEq(oracle.reencryptionFee(), oldFee);
     }
 
     function testWithdrawFees() public {
@@ -328,7 +355,7 @@ contract EncryptionOracleTest is Test {
         G1Point memory publicKey = dummyPublicKey();
         uint256 randomCipherId = 123312;
 
-        oracle.updateOracleFee(0);
+        oracle.updateReencryptionFee(0);
         uint256 requestId =
             oracle.requestReencryption(randomCipherId, publicKey);
 
@@ -350,7 +377,7 @@ contract EncryptionOracleTest is Test {
 
         MockEncryptionClient client = new MockEncryptionClient(true, oracle);
 
-        oracle.updateOracleFee(0);
+        oracle.updateReencryptionFee(0);
         vm.prank(address(client));
 
         uint256 requestId =
@@ -367,7 +394,8 @@ contract EncryptionOracleTest is Test {
         oracle = new MockEncryptionOracle(
             dummyPublicKey(),
             address(reentrantRelayer),
-            oracleFee
+            submissionFee,
+            reencryptionFee
         );
         ReencryptedCipher memory cipher = dummyReencryptedCipher();
 

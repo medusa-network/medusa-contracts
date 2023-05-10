@@ -10,7 +10,7 @@ contract BN254EncryptionOracleTest is Test {
     BN254EncryptionOracle public oracle;
 
     function setUp() public {
-        oracle = new BN254EncryptionOracle(Bn128.g1Zero(), address(0), 0);
+        oracle = new BN254EncryptionOracle(Bn128.g1Zero(), address(0), 0, 0);
     }
 
     function testSuite() public view {

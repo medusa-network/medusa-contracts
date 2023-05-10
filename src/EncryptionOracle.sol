@@ -44,12 +44,16 @@ abstract contract EncryptionOracle is
 {
     /// @notice relayer that is trusted to deliver reencryption results
     address public relayer; // 20 bytes -- 32 bytes packed with oracleFee
-    /// @notice fee that is rewarded to Medusa operators; submission = 1*oracleFee, reencryption = 2*oracleFee
-    uint96 public oracleFee; // 12 bytes -- 32 bytes packed with relayer
+    /// @notice fee paid for ciphertext submission
+    uint96 public submissionFee; // 12 bytes -- 32 bytes packed with relayer; fees are also packed with callback address in PendingRequest
+
+    /// @notice fee paid for reencryption requests
+    uint96 public reencryptionFee;
 
     /// @notice pendingRequests tracks the reencryption requests
     /// @dev We use this to determine the client to callback with the result and to store the gas reimbursement paid by the client
-    mapping(uint256 => PendingRequest) public pendingRequests;
+    mapping(uint256 requestId => PendingRequest pendingRequest) public
+        pendingRequests;
 
     /// @notice counter to derive unique nonces for each ciphertext
     uint256 private cipherNonce = 0;
@@ -69,17 +73,29 @@ abstract contract EncryptionOracle is
         _;
     }
 
+    modifier feePaid(uint96 _fee) {
+        if (msg.value < _fee) {
+            revert InsufficientFunds();
+        }
+        _;
+    }
+
     /// @notice Create a new oracle contract with a distributed public key
     /// @dev The distributed key is created by an on-chain DKG process
     /// @dev Verify the key by checking all DKG contracts deployed by Medusa operators
     /// @param _distKey An (x, y) point on an elliptic curve representing a public key previously created by medusa nodes
     /// @param _relayer that is trusted to deliver reencryption results
-    /// @param _oracleFee that is rewarded to Medusa operators
-    constructor(G1Point memory _distKey, address _relayer, uint96 _oracleFee)
-        ThresholdNetwork(_distKey)
-    {
+    /// @param _submissionFee for submitCiphertext()
+    /// @param _reencryptionFee for requestReencryption()
+    constructor(
+        G1Point memory _distKey,
+        address _relayer,
+        uint96 _submissionFee,
+        uint96 _reencryptionFee
+    ) ThresholdNetwork(_distKey) {
         relayer = _relayer;
-        oracleFee = _oracleFee;
+        submissionFee = _submissionFee;
+        reencryptionFee = _reencryptionFee;
     }
 
     function pause() external onlyOwner {
@@ -98,11 +114,9 @@ abstract contract EncryptionOracle is
         external
         payable
         whenNotPaused
+        feePaid(submissionFee)
         returns (uint256)
     {
-        if (msg.value < submissionFee()) {
-            revert InsufficientFunds();
-        }
         uint256 label = uint256(
             sha256(
                 abi.encodePacked(distKey.x, distKey.y, msg.sender, _encryptor)
@@ -130,12 +144,9 @@ abstract contract EncryptionOracle is
         external
         payable
         whenNotPaused
+        feePaid(reencryptionFee)
         returns (uint256)
     {
-        if (msg.value < reencryptionFee()) {
-            revert InsufficientFunds();
-        }
-
         /// @custom:todo check correct key
         uint256 requestId = newRequestId();
         PendingRequest memory pr = PendingRequest(msg.sender, uint96(msg.value));
@@ -171,7 +182,14 @@ abstract contract EncryptionOracle is
         uint256 _requestId,
         ReencryptedCipher calldata _cipher,
         address callbackRecipient
-    ) external whenNotPaused onlyRelayer returns (bool) {
+    )
+        external
+        payable
+        whenNotPaused
+        onlyRelayer
+        feePaid(reencryptionFee)
+        returns (bool)
+    {
         PendingRequest memory pr = pendingRequests[_requestId];
         if (pr.client != address(0)) {
             delete pendingRequests[_requestId];
@@ -198,14 +216,24 @@ abstract contract EncryptionOracle is
         relayer = _newRelayer;
     }
 
-    /// @notice The owner updates the oracleFee
-    /// @param _oracleFee The new oracleFee
-    function updateOracleFee(uint96 _oracleFee)
+    /// @notice The owner updates the submissionFee
+    /// @param _submissionFee The new submissionFee
+    function updateSubmissionFee(uint96 _submissionFee)
         external
         whenNotPaused
         onlyOwner
     {
-        oracleFee = _oracleFee;
+        submissionFee = _submissionFee;
+    }
+
+    /// @notice The owner updates the reencryptionFee
+    /// @param _reencryptionFee The new reencryptionFee
+    function updateReencryptionFee(uint96 _reencryptionFee)
+        external
+        whenNotPaused
+        onlyOwner
+    {
+        reencryptionFee = _reencryptionFee;
     }
 
     /// @notice Pays the relayer and delivers the callback to the client
@@ -235,14 +263,6 @@ abstract contract EncryptionOracle is
                 "Client does not support oracleResult() method"
             );
         }
-    }
-
-    function submissionFee() public view returns (uint96) {
-        return oracleFee;
-    }
-
-    function reencryptionFee() public view returns (uint96) {
-        return oracleFee * 2;
     }
 
     function newCipherId() private returns (uint256) {

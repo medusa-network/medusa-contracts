@@ -22,7 +22,7 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
 
     /*altbn128.G1Point private acc2;*/
 
-    constructor() BN254EncryptionOracle(Bn128.g1Zero(), address(0), 0) {
+    constructor() BN254EncryptionOracle(Bn128.g1Zero(), address(0), 0, 0) {
         accumulator = Bn128.g1Zero();
         /*acc2 = altbn128.P1();*/
         /*acc2.X = 0;*/
@@ -128,12 +128,14 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
     function deployOracle(
         G1Point memory distkey,
         address relayer,
-        uint96 oracleFee
+        uint96 submissionFee,
+        uint96 reencryptionFee
     ) public returns (address) {
         BN254EncryptionOracle _oracle = new BN254EncryptionOracle(
             distkey,
             relayer,
-            oracleFee
+            submissionFee,
+            reencryptionFee
         );
         oracle = address(_oracle);
         distKey = distkey;

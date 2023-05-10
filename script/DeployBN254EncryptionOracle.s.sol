@@ -11,13 +11,14 @@ contract DeployBN254EncryptionOracle is BaseScript {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address relayer = vm.envAddress("NODE_1_ADDRESS");
-        uint96 oracleFee = uint96(vm.envUint("ORACLE_FEE"));
+        uint96 submissionFee = uint96(vm.envUint("SUBMISSION_FEE"));
+        uint96 reencryptionFee = uint96(vm.envUint("REENCRYPTION_FEE"));
 
         vm.startBroadcast(deployerPrivateKey);
 
         OracleFactory factory = OracleFactory(getOracleFactoryAddress());
         factory.deployReencryption_BN254_G1_HGAMAL(
-            getDistributedKey(), relayer, oracleFee
+            getDistributedKey(), relayer, submissionFee, reencryptionFee
         );
         vm.stopBroadcast();
     }

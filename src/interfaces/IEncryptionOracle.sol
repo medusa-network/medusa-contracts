@@ -56,7 +56,7 @@ interface IEncryptionOracle is IThresholdNetwork {
         uint256 _requestId,
         ReencryptedCipher calldata _cipher,
         address callbackRecipient
-    ) external returns (bool);
+    ) external payable returns (bool);
 
     /// @notice All instance contracts must implement their own encryption suite
     /// @dev e.g. BN254_KEYG1_HGAMAL
