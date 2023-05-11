@@ -54,8 +54,9 @@ contract OnlyFiles is MedusaClient, PullPayment {
         string calldata description,
         uint256 price,
         string calldata uri
-    ) external returns (uint256) {
-        uint256 cipherId = oracle.submitCiphertext(cipher, msg.sender);
+    ) external payable returns (uint256) {
+        uint256 cipherId =
+            oracle.submitCiphertext{value: msg.value}(cipher, msg.sender);
         listings[cipherId] = Listing(msg.sender, price, uri);
         emit NewListing(
             msg.sender, cipherId, cipher, name, description, price, uri
