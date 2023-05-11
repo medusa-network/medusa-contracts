@@ -145,10 +145,11 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
     function submitCiphertextToOracle(
         Ciphertext calldata _cipher,
         address _encryptor
-    ) public returns (uint256) {
+    ) public payable returns (uint256) {
         require(oracle != address(0), "oracle not deployed");
-        return
-            BN254EncryptionOracle(oracle).submitCiphertext(_cipher, _encryptor);
+        return BN254EncryptionOracle(oracle).submitCiphertext{value: msg.value}(
+            _cipher, _encryptor
+        );
     }
 
     function verifyDLEQProof(
