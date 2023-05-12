@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import {OracleFactory} from "../src/OracleFactory.sol";
 import {EncryptionOracle} from "../src/EncryptionOracle.sol";
-import {Bn128, G1Point} from "../src/Bn128.sol";
+import {Bn128, G1Point} from "../src/utils/Bn128.sol";
 
 contract OracleFactoryTest is Test {
     OracleFactory private factory;

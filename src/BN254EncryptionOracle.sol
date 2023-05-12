@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {Suite} from "../src/interfaces/IEncryptionOracle.sol";
 import {EncryptionOracle} from "./EncryptionOracle.sol";
-import {G1Point} from "./Bn128.sol";
+import {G1Point} from "./utils/Bn128.sol";
 
 contract BN254EncryptionOracle is EncryptionOracle {
     constructor(

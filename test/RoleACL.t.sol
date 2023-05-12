@@ -6,8 +6,8 @@ import {
     IEncryptionOracle as IO
 } from "../src/interfaces/IEncryptionOracle.sol";
 import {BN254EncryptionOracle} from "../src/BN254EncryptionOracle.sol";
-import {RoleACL} from "../src/RoleACL.sol";
-import {Bn128, G1Point} from "../src/Bn128.sol";
+import {RoleACL} from "../src/client/RoleACL.sol";
+import {Bn128, G1Point} from "../src/utils/Bn128.sol";
 import "forge-std/Test.sol";
 
 contract RoleACLTest is Test {

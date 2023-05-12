@@ -14,7 +14,7 @@ import {
     InvalidCommitmentsCount
 } from "../src/DKG.sol";
 import {DKGFactory} from "../src/DKGFactory.sol";
-import {Bn128, G1Point, DleqProof} from "../src/Bn128.sol";
+import {Bn128, G1Point, DleqProof} from "../src/utils/Bn128.sol";
 import "forge-std/Test.sol";
 
 contract DKGTest is Test {

@@ -16,10 +16,10 @@ import {
     NotRelayerOrOwner,
     InsufficientFunds
 } from "../src/EncryptionOracle.sol";
-import {MedusaClient} from "../src/MedusaClient.sol";
+import {MedusaClient} from "../src/client/MedusaClient.sol";
 import {IEncryptionClient} from "../src/interfaces/IEncryptionClient.sol";
 import {Suite} from "../src/OracleFactory.sol";
-import {G1Point, DleqProof, Bn128} from "../src/Bn128.sol";
+import {G1Point, DleqProof, Bn128} from "../src/utils/Bn128.sol";
 
 contract MockEncryptionOracle is EncryptionOracle {
     constructor(
@@ -291,6 +291,10 @@ contract EncryptionOracleTest is Test {
             otherRandomCipherId, publicKey
         );
         assertEq(requestId, 2);
+    }
+
+    function testGasRequestReencryption() public {
+        oracle.requestReencryption{value: 1 ether}(1, G1Point(23476, 23478));
     }
 
     function testCannotRequestReencryptionIfInsufficientFunds() public {

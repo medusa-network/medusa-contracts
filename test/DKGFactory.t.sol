@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import {DKGFactory} from "../src/DKGFactory.sol";
-import {Bn128} from "../src/Bn128.sol";
+import {Bn128} from "../src/utils/Bn128.sol";
 
 contract DKGFactoryTest is Test {
     DKGFactory factory;

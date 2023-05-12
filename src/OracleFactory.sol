@@ -5,7 +5,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IEncryptionOracle, Suite} from "./interfaces/IEncryptionOracle.sol";
 import {EncryptionOracle} from "./EncryptionOracle.sol";
 import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
-import {G1Point} from "./Bn128.sol";
+import {G1Point} from "./utils/Bn128.sol";
 
 /// @title OracleFactory
 /// @author Cryptonet
@@ -14,7 +14,7 @@ import {G1Point} from "./Bn128.sol";
 /// @dev The factory contract is the owner of all oracles it deploys
 contract OracleFactory is Ownable {
     /// @notice List of running oracles
-    mapping(address => bool) public oracles;
+    mapping(address oracle => bool exists) public oracles;
 
     /// @notice Emitted when a new oracle is deployed
     event NewOracleDeployed(address oracle, Suite suite);

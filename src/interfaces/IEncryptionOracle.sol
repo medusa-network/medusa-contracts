@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {IThresholdNetwork} from "../DKG.sol";
-import {G1Point, DleqProof} from "../Bn128.sol";
+import {G1Point, DleqProof} from "../utils/Bn128.sol";
 
 /// @notice An enum of supported encryption suites
 /// @dev The format is CURVE_KEYGROUP_ENCRYPTION

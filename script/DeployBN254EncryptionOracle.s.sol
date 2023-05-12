@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Script.sol";
 import {OracleFactory} from "../src/OracleFactory.sol";
 import {DKG} from "../src/DKG.sol";
-import {G1Point} from "../src/Bn128.sol";
+import {G1Point} from "../src/utils/Bn128.sol";
 import {BaseScript} from "./BaseScript.s.sol";
 
 contract DeployBN254EncryptionOracle is BaseScript {
