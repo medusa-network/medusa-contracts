@@ -2,7 +2,12 @@
 pragma solidity ^0.8.19;
 
 import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
-import {ArbSys, ARBITRUM_ONE, ARBITRUM_GOERLI} from "./ArbSys.sol";
+import {
+    ARB_SYS_PRECOMPILE_ADDRESS,
+    ARBITRUM_ONE,
+    ARBITRUM_GOERLI
+} from "./utils/Constants.sol";
+import {IArbSys} from "@openzeppelin/contracts/vendor/arbitrum/IArbSys.sol";
 
 error InvalidPhase();
 error ParticipantLimit();
@@ -417,7 +422,7 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @dev Calling block.number on Arbitrum returns the L1 block number, which is not desired
     function blockNumber() private view returns (uint256) {
         if (block.chainid == ARBITRUM_ONE || block.chainid == ARBITRUM_GOERLI) {
-            return ArbSys(address(100)).arbBlockNumber();
+            return IArbSys(ARB_SYS_PRECOMPILE_ADDRESS).arbBlockNumber();
         } else {
             return block.number;
         }
