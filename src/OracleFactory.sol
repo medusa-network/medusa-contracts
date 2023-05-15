@@ -29,12 +29,8 @@ contract OracleFactory is Ownable {
         uint96 _submissionFee,
         uint96 _reencryptionFee
     ) external onlyOwner returns (address) {
-        BN254EncryptionOracle oracle = new BN254EncryptionOracle(
-            _distKey,
-            _relayer,
-            _submissionFee,
-            _reencryptionFee
-        );
+        BN254EncryptionOracle oracle = new BN254EncryptionOracle();
+        oracle.initialize(_distKey, _relayer, _submissionFee, _reencryptionFee);
 
         oracles[address(oracle)] = true;
 

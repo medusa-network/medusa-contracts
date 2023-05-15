@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ThresholdNetwork} from "./ThresholdNetwork.sol";
+import {PausableUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import {OwnableUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Initializable} from
+    "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ThresholdNetworkUpgradeable} from "./ThresholdNetworkUpgradeable.sol";
 import {Bn128, G1Point, DleqProof} from "./utils/Bn128.sol";
 import {
     IEncryptionOracle,
@@ -37,10 +41,11 @@ error InsufficientFunds();
 /// @notice You must implement your encryption suite when inheriting from this contract
 /// @dev DOES NOT currently validate reencryption results OR implement fees for the medusa oracle network
 abstract contract EncryptionOracle is
-    ThresholdNetwork,
-    IEncryptionOracle,
-    Ownable,
-    Pausable
+    Initializable,
+    OwnableUpgradeable,
+    PausableUpgradeable,
+    ThresholdNetworkUpgradeable,
+    IEncryptionOracle
 {
     /// @notice relayer that is trusted to deliver reencryption results
     address public relayer; // 20 bytes -- 32 bytes packed with oracleFee
@@ -80,19 +85,23 @@ abstract contract EncryptionOracle is
         _;
     }
 
-    /// @notice Create a new oracle contract with a distributed public key
+    /// @notice Initialize a new oracle contract with a distributed public key
     /// @dev The distributed key is created by an on-chain DKG process
     /// @dev Verify the key by checking all DKG contracts deployed by Medusa operators
     /// @param _distKey An (x, y) point on an elliptic curve representing a public key previously created by medusa nodes
     /// @param _relayer that is trusted to deliver reencryption results
     /// @param _submissionFee for submitCiphertext()
     /// @param _reencryptionFee for requestReencryption()
-    constructor(
+    function _initialize(
         G1Point memory _distKey,
         address _relayer,
         uint96 _submissionFee,
         uint96 _reencryptionFee
-    ) ThresholdNetwork(_distKey) {
+    ) internal onlyInitializing {
+        __Ownable_init();
+        __Pausable_init();
+        ThresholdNetworkUpgradeable._initialize(_distKey);
+
         relayer = _relayer;
         submissionFee = _submissionFee;
         reencryptionFee = _reencryptionFee;

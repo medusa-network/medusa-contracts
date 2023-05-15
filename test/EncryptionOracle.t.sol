@@ -20,14 +20,20 @@ import {MedusaClient} from "../src/client/MedusaClient.sol";
 import {IEncryptionClient} from "../src/interfaces/IEncryptionClient.sol";
 import {Suite} from "../src/OracleFactory.sol";
 import {G1Point, DleqProof, Bn128} from "../src/utils/Bn128.sol";
+import {Initializable} from
+    "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract MockEncryptionOracle is EncryptionOracle {
-    constructor(
+contract MockEncryptionOracle is Initializable, EncryptionOracle {
+    function initialize(
         G1Point memory _distKey,
         address _relayer,
         uint96 _submissionFee,
         uint96 _reencryptionFee
-    ) EncryptionOracle(_distKey, _relayer, _submissionFee, _reencryptionFee) {}
+    ) public initializer {
+        EncryptionOracle._initialize(
+            _distKey, _relayer, _submissionFee, _reencryptionFee
+        );
+    }
 
     function suite() external pure override returns (Suite) {
         return Suite.BN254_KEYG1_HGAMAL;
@@ -87,11 +93,9 @@ contract EncryptionOracleTest is Test {
     );
 
     function setUp() public {
-        oracle = new MockEncryptionOracle(
-            dummyPublicKey(),
-            relayer,
-            submissionFee,
-            reencryptionFee
+        oracle = new MockEncryptionOracle();
+        oracle.initialize(
+            dummyPublicKey(), relayer, submissionFee, reencryptionFee
         );
     }
 
@@ -395,7 +399,8 @@ contract EncryptionOracleTest is Test {
 
     function testCannotDeliverReencryptionWithReentrantAttack() public {
         MockReentrantRelayer reentrantRelayer = new MockReentrantRelayer();
-        oracle = new MockEncryptionOracle(
+        oracle = new MockEncryptionOracle();
+        oracle.initialize(
             dummyPublicKey(),
             address(reentrantRelayer),
             submissionFee,
