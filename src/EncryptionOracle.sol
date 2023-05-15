@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ThresholdNetwork} from "./DKG.sol";
+import {ThresholdNetwork} from "./ThresholdNetwork.sol";
 import {Bn128, G1Point, DleqProof} from "./utils/Bn128.sol";
 import {
     IEncryptionOracle,

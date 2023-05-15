@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import {IThresholdNetwork} from "../DKG.sol";
+import {IThresholdNetwork} from "./IThresholdNetwork.sol";
 import {G1Point, DleqProof} from "../utils/Bn128.sol";
 
 /// @notice An enum of supported encryption suites

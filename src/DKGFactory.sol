@@ -2,7 +2,8 @@
 pragma solidity ^0.8.19;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IDKGMembership, DKG} from "./DKG.sol";
+import {DKG} from "./DKG.sol";
+import {IDKGMembership} from "./interfaces/IDKGMembership.sol";
 
 /// @title DKGFactory
 /// @author Cryptonet

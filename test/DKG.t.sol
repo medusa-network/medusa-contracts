@@ -2,8 +2,6 @@
 pragma solidity ^0.8.19;
 
 import {
-    DealBundle,
-    IDKG,
     DKG,
     NotAuthorized,
     NotRegistered,
@@ -13,6 +11,8 @@ import {
     InvalidSharesCount,
     InvalidCommitmentsCount
 } from "../src/DKG.sol";
+
+import {DealBundle, IDKG} from "../src/interfaces/IDKG.sol";
 import {DKGFactory} from "../src/DKGFactory.sol";
 import {Bn128, G1Point, DleqProof} from "../src/utils/Bn128.sol";
 import "forge-std/Test.sol";
