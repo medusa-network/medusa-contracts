@@ -11,6 +11,7 @@ import {IArbSys} from "@openzeppelin/contracts/vendor/arbitrum/IArbSys.sol";
 import {ThresholdNetwork} from "./ThresholdNetwork.sol";
 import {IDKG, DealBundle, ComplaintReturn} from "./interfaces/IDKG.sol";
 import {IDKGMembership} from "./interfaces/IDKGMembership.sol";
+import {IThresholdNetwork} from "./interfaces/IThresholdNetwork.sol";
 
 error InvalidPhase();
 error ParticipantLimit();
@@ -329,7 +330,7 @@ contract DKG is ThresholdNetwork, IDKG {
     function distributedKey()
         public
         view
-        override
+        override(ThresholdNetwork, IThresholdNetwork)
         onlyPhase(Phase.DONE)
         returns (G1Point memory)
     {

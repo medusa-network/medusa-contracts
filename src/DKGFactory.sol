@@ -25,11 +25,11 @@ contract DKGFactory is Ownable, IDKGMembership {
     /// @notice Deploys a new DKG
     /// @dev Only the Factory owner can deploy a new DKG
     /// @return The id and address of the new DKG
-    function deployNewDKG() public onlyOwner returns (address) {
+    function deployNewDKG() public onlyOwner returns (DKG) {
         DKG dkg = new DKG(this);
         dkgAddresses[address(dkg)] = true;
         emit NewDKGCreated(address(dkg));
-        return address(dkg);
+        return dkg;
     }
 
     // @notice implementing IDKGMembership interface

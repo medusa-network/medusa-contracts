@@ -13,10 +13,10 @@ contract DKGFactoryTest is Test {
     }
 
     function testDeployNewDKG() public {
-        address dkgAddress = factory.deployNewDKG();
+        address dkgAddress = address(factory.deployNewDKG());
         assertEq(factory.dkgAddresses(dkgAddress), true);
 
-        address secondDKGAddress = factory.deployNewDKG();
+        address secondDKGAddress = address(factory.deployNewDKG());
         assertEq(factory.dkgAddresses(secondDKGAddress), true);
 
         assertFalse(dkgAddress == secondDKGAddress);

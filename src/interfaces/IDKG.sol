@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {G1Point} from "../utils/Bn128.sol";
+import {IThresholdNetwork} from "./IThresholdNetwork.sol";
 
 enum ComplaintReturn {
     ValidComplaint,
@@ -17,7 +18,7 @@ struct DealBundle {
     G1Point[] commitment;
 }
 
-interface IDKG {
+interface IDKG is IThresholdNetwork {
     enum Phase {
         REGISTRATION,
         DEAL,
