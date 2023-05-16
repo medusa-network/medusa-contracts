@@ -13,4 +13,5 @@
 	url = https://github.com/openzeppelin/openzeppelin-contracts-upgradeable
 [submodule "lib/solady"]
 	path = lib/solady
-	url = https://github.com/vectorized/solady
+	url = https://github.com/medusa-network/solady
+	branch = main
