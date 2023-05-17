@@ -2,11 +2,15 @@
 pragma solidity ^0.8.19;
 
 // TODO: Is it bad practice to use Ownable from OZ and Solady?
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "solady/auth/Ownable.sol";
 import {ERC1967Factory} from "solady/utils/ERC1967Factory.sol";
 
 contract OracleFactory is ERC1967Factory, Ownable {
     event NewOracleDeployed(address oracle);
+
+    constructor(address owner) {
+        _initializeOwner(owner);
+    }
 
     function _deploy(
         address implementation,

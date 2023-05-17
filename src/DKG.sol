@@ -49,6 +49,9 @@ contract DKG is ThresholdNetwork, IDKG {
     uint256 public dealTime;
     uint256 public complaintTime;
 
+    /// @notice Contracts telling who is authorized to participate or not in the DKG
+    IDKGMembership public membership;
+
     /// @notice Maps participant index to hash of their deal
     mapping(uint32 => uint256) private dealHashes;
 
@@ -70,9 +73,6 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @notice Number of nodes registered
     /// @dev serves to designate the index
     uint32 private nbRegistered = 0;
-
-    /// @notice Contracts telling who is authorized to participate or not in the DKG
-    IDKGMembership private membership;
 
     modifier onlyRegistered() {
         if (addressIndex[msg.sender] == 0) {

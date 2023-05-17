@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "solady/auth/Ownable.sol";
 import {DKG} from "./DKG.sol";
 import {IDKGMembership} from "./interfaces/IDKGMembership.sol";
 
@@ -20,7 +20,9 @@ contract DKGFactory is Ownable, IDKGMembership {
     /// @param dkg The address of the deployed DKG
     event NewDKGCreated(address dkg);
 
-    constructor() Ownable() {}
+    constructor(address owner) {
+        _initializeOwner(owner);
+    }
 
     /// @notice Deploys a new DKG
     /// @dev Only the Factory owner can deploy a new DKG
