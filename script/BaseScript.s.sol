@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Script.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import {G1Point} from "../src/utils/Bn128.sol";
+import {Bn128, G1Point} from "../src/utils/Bn128.sol";
 import {DKG} from "../src/DKG.sol";
 import {OracleFactory} from "../src/OracleFactory.sol";
 import {DKGFactory} from "../src/DKGFactory.sol";
@@ -13,8 +13,25 @@ abstract contract BaseScript is Script {
     using Strings for uint256;
     using stdJson for string;
 
-    function getDeployer() internal returns (address) {
-        return vm.rememberKey(vm.envUint("PRIVATE_KEY"));
+    /// @dev The address of the contract deployer.
+    address public deployer;
+
+    // @dev The salt used for deterministic deployment addresses with CREATE2
+    bytes32 internal salt;
+
+    modifier broadcaster() {
+        vm.startBroadcast(deployer);
+        _;
+        vm.stopBroadcast();
+    }
+
+    constructor() {
+        deployer = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
+        salt = bytes32(abi.encodePacked(deployer, "MEDUSA_V0"));
+    }
+
+    function setDeployer(address _deployer) public {
+        deployer = _deployer;
     }
 
     function getOracleFactory() internal returns (OracleFactory) {
@@ -33,7 +50,9 @@ abstract contract BaseScript is Script {
         return DKG(vm.envAddress("DKG_ADDRESS"));
     }
 
-    function getNodes() internal returns (address[3] memory nodes) {
+    function getNodes() internal returns (address[] memory) {
+        address[] memory nodes = new address[](3);
+
         for (uint256 i = 0; i < nodes.length; i++) {
             address node = vm.envAddress(
                 string(
@@ -47,51 +66,15 @@ abstract contract BaseScript is Script {
     }
 
     function getDistributedKey() internal returns (G1Point memory) {
-        return getDKG().distributedKey();
-    }
+        uint32 size;
+        DKG dkg = getDKG();
 
-    function getOracleFactoryAddressFromBroadcast()
-        internal
-        returns (address)
-    {
-        string memory filename = string(
-            abi.encodePacked(
-                "broadcast/DeployOracleFactory.s.sol/",
-                block.chainid.toString(),
-                "/run-latest.json"
-            )
-        );
-        string memory json = vm.readFile(filename);
-        address factoryAddr =
-            json.readAddress(".transactions[0].contractAddress");
-        return factoryAddr;
-    }
+        // Check if DKG is deployed
+        assembly {
+            size := extcodesize(dkg)
+        }
 
-    function getDKGFactoryAddressFromBroadcast() internal returns (address) {
-        string memory filename = string(
-            abi.encodePacked(
-                "broadcast/DeployDKGFactory.s.sol/",
-                block.chainid.toString(),
-                "/run-latest.json"
-            )
-        );
-        string memory json = vm.readFile(filename);
-        address factoryAddr =
-            json.readAddress(".transactions[0].contractAddress");
-        return factoryAddr;
-    }
-
-    function getDKGInstanceAddressFromBroadcast() internal returns (address) {
-        string memory filename = string(
-            abi.encodePacked(
-                "broadcast/DeployDKGInstance.s.sol/",
-                block.chainid.toString(),
-                "/run-latest.json"
-            )
-        );
-        string memory json = vm.readFile(filename);
-        address factoryAddr =
-            json.readAddress(".transactions[0].additionalContracts[0].address");
-        return factoryAddr;
+        if (size > 0) return dkg.distributedKey();
+        else return Bn128.g1Zero();
     }
 }

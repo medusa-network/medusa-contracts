@@ -3,15 +3,22 @@ pragma solidity ^0.8.19;
 
 import {BaseScript} from "./BaseScript.s.sol";
 import {DKG} from "../src/DKG.sol";
-import {DeployDKGReturn} from "./types/ScriptReturnTypes.sol";
+import {ScriptReturns} from "./types/ScriptReturns.sol";
 
 contract DeployDKG is BaseScript {
-    function run() external returns (DeployDKGReturn memory) {
-        vm.startBroadcast(getDeployer());
+    ScriptReturns.DeployDKG private contracts;
 
-        DKG dkg = getDKGFactory().deployNewDKG();
+    function run()
+        external
+        broadcaster
+        returns (ScriptReturns.DeployDKG memory)
+    {
+        contracts.dkg = getDKGFactory().deployNewDKG();
+        assertions();
+        return contracts;
+    }
 
-        vm.stopBroadcast();
-        return DeployDKGReturn(dkg);
+    function assertions() private {
+        require(contracts.dkg.membership() == getDKGFactory());
     }
 }

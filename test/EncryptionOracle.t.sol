@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import "forge-std/Test.sol";
+import {MedusaTest} from "./MedusaTest.sol";
 import {
     Ciphertext,
     ReencryptedCipher,
@@ -77,10 +77,8 @@ contract MockReentrantRelayer {
     }
 }
 
-contract EncryptionOracleTest is Test {
+contract EncryptionOracleTest is MedusaTest {
     MockEncryptionOracle public oracle;
-    address private notOwner = makeAddr("notOwner");
-    address public relayer = makeAddr("relayer");
     uint96 public submissionFee = 0.001 ether;
     uint96 public reencryptionFee = 0.002 ether;
 

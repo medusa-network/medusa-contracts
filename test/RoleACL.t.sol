@@ -5,13 +5,12 @@ import {Ciphertext} from "../src/interfaces/IEncryptionOracle.sol";
 import {BN254EncryptionOracle} from "../src/BN254EncryptionOracle.sol";
 import {RoleACL} from "../src/client/RoleACL.sol";
 import {Bn128, G1Point} from "../src/utils/Bn128.sol";
-import "forge-std/Test.sol";
+import {MedusaTest} from "./MedusaTest.sol";
 
-contract RoleACLTest is Test {
+contract RoleACLTest is MedusaTest {
     BN254EncryptionOracle oracle;
 
     function setUp() public {
-        address relayer = address(0);
         oracle = new BN254EncryptionOracle();
         oracle.initialize(Bn128.g1Zero(), address(this), relayer, 0, 0);
     }

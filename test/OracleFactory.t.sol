@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import "forge-std/Test.sol";
+import {MedusaTest} from "./MedusaTest.sol";
 import {OracleFactory} from "../src/OracleFactory.sol";
 import {ERC1967Factory} from "solady/utils/ERC1967Factory.sol";
 import {Ownable} from "solady/auth/Ownable.sol";
@@ -11,62 +11,58 @@ import {
 import {BN254EncryptionOracle} from "../src/BN254EncryptionOracle.sol";
 import {Bn128, G1Point} from "../src/utils/Bn128.sol";
 import {DeployFactories} from "../script/DeployFactories.s.sol";
+import {DeployBN254EncryptionOracle} from
+    "../script/DeployBN254EncryptionOracle.s.sol";
 
-contract OracleFactoryTest is Test {
-    OracleFactory private factory;
-    EncryptionOracle private oracleImplementation;
-    EncryptionOracle private oracle;
-
-    address private owner = address(this);
-    address private notOwner = makeAddr("notOwner");
-    address private relayer = makeAddr("relayer");
-
+contract OracleFactoryTest is MedusaTest {
+    DeployFactories private factoryDeployerScript;
+    DeployBN254EncryptionOracle private oracleDeployerScript;
     uint8 private deploymentCounter;
+
+    OracleFactory private factory;
+    EncryptionOracle private oracle;
 
     event NewOracleDeployed(address oracle);
 
     function setUp() public {
-        oracleImplementation = new BN254EncryptionOracle();
+        factoryDeployerScript = new DeployFactories();
+        oracleDeployerScript = new DeployBN254EncryptionOracle();
 
-        factory = new DeployFactories().run().oracleFactory;
-        vm.prank(factory.owner());
-        factory.transferOwnership(owner);
-
-        oracle = deployOracle(owner);
+        factory = factoryDeployerScript.run().oracleFactory;
     }
 
-    function salt(address caller) private view returns (bytes32) {
-        return bytes32(abi.encodePacked(caller, deploymentCounter));
+    function salt(address caller, uint8 counter)
+        private
+        pure
+        returns (bytes32)
+    {
+        return bytes32(abi.encodePacked(caller, counter));
     }
 
-    function deployOracle(address caller) private returns (EncryptionOracle) {
+    function deployOracle(bytes32 _salt) private returns (EncryptionOracle) {
         deploymentCounter += 1;
-        address proxy = factory.deployDeterministicAndCall(
-            address(oracleImplementation),
-            caller,
-            salt(caller),
-            abi.encodeWithSignature(
-                "initialize((uint256,uint256),address,address,uint96,uint96)",
-                Bn128.g1Zero(),
-                caller,
-                relayer,
-                0,
-                0
-            )
-        );
-        return EncryptionOracle(proxy);
+
+        EncryptionOracle _oracle =
+            oracleDeployerScript.deploy(factory, _salt).oracle;
+        return _oracle;
     }
 
     function testDeployNewOracle() public {
-        address proxy = factory.predictDeterministicAddress(salt(owner));
+        bytes32 _salt = salt(
+            address(oracleDeployerScript.deployer()), deploymentCounter + 1
+        );
+        address proxy = factory.predictDeterministicAddress(_salt);
         vm.expectEmit(true, true, false, false);
         emit NewOracleDeployed(proxy);
-        deployOracle(owner);
+        deployOracle(_salt);
     }
 
     function testCannotDeployNewOracleIfNotOwner() public {
-        vm.prank(notOwner);
-        vm.expectRevert("Ownable: caller is not the owner");
-        deployOracle(notOwner);
+        oracleDeployerScript.setDeployer(notOwner);
+        bytes32 _salt =
+            salt(address(oracleDeployerScript.deployer()), deploymentCounter);
+
+        vm.expectRevert(Ownable.Unauthorized.selector);
+        deployOracle(_salt);
     }
 }

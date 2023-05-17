@@ -6,30 +6,34 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import {BaseScript} from "./BaseScript.s.sol";
 import {OracleFactory} from "../src/OracleFactory.sol";
 import {DKGFactory} from "../src/DKGFactory.sol";
-import {DeployFactoriesReturn} from "./types/ScriptReturnTypes.sol";
+import {ScriptReturns} from "./types/ScriptReturns.sol";
 
 contract DeployFactories is BaseScript {
-    function run() external returns (DeployFactoriesReturn memory) {
-        vm.startBroadcast(getDeployer());
+    address[] private nodes = getNodes();
+    ScriptReturns.DeployFactories private contracts;
 
-        DKGFactory dkgFactory = new DKGFactory();
-        OracleFactory oracleFactory = new OracleFactory();
-        address[3] memory nodes = addAuthorizedNodes(dkgFactory);
-
-        vm.stopBroadcast();
-        return DeployFactoriesReturn(dkgFactory, oracleFactory, nodes);
-    }
-
-    function addAuthorizedNodes(DKGFactory dkgFactory)
-        private
-        returns (address[3] memory nodes)
+    function run()
+        external
+        broadcaster
+        returns (ScriptReturns.DeployFactories memory)
     {
-        nodes = getNodes();
+        contracts.dkgFactory = new DKGFactory{salt: salt}(deployer);
+        contracts.oracleFactory = new OracleFactory{salt: salt}(deployer);
 
         for (uint256 i = 0; i < nodes.length; i++) {
-            dkgFactory.addAuthorizedNode(nodes[i]);
+            contracts.dkgFactory.addAuthorizedNode(nodes[i]);
         }
+        contracts.nodes = nodes;
+        assertions();
+        return contracts;
+    }
 
-        return nodes;
+    function assertions() private view {
+        require(contracts.dkgFactory.owner() == deployer);
+        require(contracts.oracleFactory.owner() == deployer);
+
+        for (uint256 i = 0; i < nodes.length; i++) {
+            require(contracts.dkgFactory.isAuthorizedNode(nodes[i]));
+        }
     }
 }

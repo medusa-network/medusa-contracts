@@ -4,13 +4,22 @@ pragma solidity ^0.8.19;
 import "forge-std/Script.sol";
 import {OnlyFiles} from "../src/client/OnlyFiles.sol";
 import {BaseScript} from "./BaseScript.s.sol";
+import {ScriptReturns} from "./types/ScriptReturns.sol";
 
 contract DeployOnlyFiles is BaseScript {
-    function run() external {
-        vm.startBroadcast(getDeployer());
+    ScriptReturns.DeployOnlyFiles private contracts;
 
-        new OnlyFiles(getOracle());
+    function run()
+        external
+        broadcaster
+        returns (ScriptReturns.DeployOnlyFiles memory)
+    {
+        contracts.onlyFiles = new OnlyFiles(getOracle());
+        assertions();
+        return contracts;
+    }
 
-        vm.stopBroadcast();
+    function assertions() private {
+        require(contracts.onlyFiles.oracle() == getOracle());
     }
 }

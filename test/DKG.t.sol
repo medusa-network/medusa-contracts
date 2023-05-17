@@ -15,16 +15,16 @@ import {
 import {DealBundle, IDKG} from "../src/interfaces/IDKG.sol";
 import {DKGFactory} from "../src/DKGFactory.sol";
 import {Bn128, G1Point, DleqProof} from "../src/utils/Bn128.sol";
-import "forge-std/Test.sol";
+import {MedusaTest} from "./MedusaTest.sol";
 
-contract DKGTest is Test {
+contract DKGTest is MedusaTest {
     DKG private dkg;
     DKGFactory private factory;
     G1Point private p1;
     FakeDleq private fakeProof;
 
     function setUp() public {
-        factory = new DKGFactory();
+        factory = new DKGFactory(address(this));
         dkg = new DKG(factory);
         p1 = randomPoint(1);
         fakeProof = fakeDleq();

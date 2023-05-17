@@ -1,21 +1,27 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import "forge-std/Test.sol";
+import {MedusaTest} from "./MedusaTest.sol";
 import {DKGFactory} from "../src/DKGFactory.sol";
 import {Bn128} from "../src/utils/Bn128.sol";
+import {DeployFactories} from "../script/DeployFactories.s.sol";
+import {Ownable} from "solady/auth/Ownable.sol";
 
-contract DKGFactoryTest is Test {
+contract DKGFactoryTest is MedusaTest {
     DKGFactory factory;
+    address authorizedNode = makeAddr("authorizedNode");
+    address notAuthorizedNode = makeAddr("notAuthorizedNode");
 
     function setUp() public {
-        factory = new DKGFactory();
+        factory = new DeployFactories().run().dkgFactory;
     }
 
     function testDeployNewDKG() public {
+        vm.prank(owner);
         address dkgAddress = address(factory.deployNewDKG());
         assertEq(factory.dkgAddresses(dkgAddress), true);
 
+        vm.prank(owner);
         address secondDKGAddress = address(factory.deployNewDKG());
         assertEq(factory.dkgAddresses(secondDKGAddress), true);
 
@@ -23,48 +29,46 @@ contract DKGFactoryTest is Test {
     }
 
     function testCannotDeployNewDKGIfNotOwner() public {
-        vm.prank(address(uint160(12345)));
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.prank(notOwner);
+        vm.expectRevert(Ownable.Unauthorized.selector);
         factory.deployNewDKG();
     }
 
     function testAddAuthorizedNode() public {
-        address authorizedNode = address(uint160(12345));
         assertFalse(factory.isAuthorizedNode(authorizedNode));
 
+        vm.prank(owner);
         factory.addAuthorizedNode(authorizedNode);
         assert(factory.isAuthorizedNode(authorizedNode));
     }
 
     function testCannotAddAuthorizedNodeIfNotOwner() public {
-        address notOwner = address(uint160(12345));
-        address notAuthorizedNode = address(uint160(98765));
         assertFalse(factory.isAuthorizedNode(notAuthorizedNode));
 
         vm.prank(notOwner);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(Ownable.Unauthorized.selector);
         factory.addAuthorizedNode(notAuthorizedNode);
 
         assertFalse(factory.isAuthorizedNode(notAuthorizedNode));
     }
 
     function testRemoveAuthorizedNode() public {
-        address authorizedNode = address(uint160(12345));
+        vm.prank(owner);
         factory.addAuthorizedNode(authorizedNode);
         assert(factory.isAuthorizedNode(authorizedNode));
 
+        vm.prank(owner);
         factory.removeAuthorizedNode(authorizedNode);
         assertFalse(factory.isAuthorizedNode(authorizedNode));
     }
 
     function testCannotRemoveAuthorizedNodeIfNotOwner() public {
-        address notOwner = address(uint160(12345));
-        address authorizedNode = address(uint160(98765));
+        vm.prank(owner);
         factory.addAuthorizedNode(authorizedNode);
         assert(factory.isAuthorizedNode(authorizedNode));
 
         vm.prank(notOwner);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(Ownable.Unauthorized.selector);
         factory.removeAuthorizedNode(authorizedNode);
 
         assert(factory.isAuthorizedNode(authorizedNode));
