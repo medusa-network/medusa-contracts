@@ -10,12 +10,13 @@ import {G1Point} from "./utils/Bn128.sol";
 contract BN254EncryptionOracle is Initializable, EncryptionOracle {
     function initialize(
         G1Point memory _distKey,
+        address _owner,
         address _relayer,
         uint96 _submissionFee,
         uint96 _reencryptionFee
     ) public initializer {
         EncryptionOracle._initialize(
-            _distKey, _relayer, _submissionFee, _reencryptionFee
+            _distKey, _owner, _relayer, _submissionFee, _reencryptionFee
         );
     }
 

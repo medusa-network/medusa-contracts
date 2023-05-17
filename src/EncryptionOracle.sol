@@ -7,6 +7,7 @@ import {OwnableUpgradeable} from
     "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Initializable} from
     "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {Ownable} from "solady/auth/Ownable.sol";
 import {ThresholdNetworkUpgradeable} from "./ThresholdNetworkUpgradeable.sol";
 import {Bn128, G1Point, DleqProof} from "./utils/Bn128.sol";
 import {
@@ -42,7 +43,7 @@ error InsufficientFunds();
 /// @dev DOES NOT currently validate reencryption results OR implement fees for the medusa oracle network
 abstract contract EncryptionOracle is
     Initializable,
-    OwnableUpgradeable,
+    Ownable,
     PausableUpgradeable,
     ThresholdNetworkUpgradeable,
     IEncryptionOracle
@@ -61,10 +62,10 @@ abstract contract EncryptionOracle is
         pendingRequests;
 
     /// @notice counter to derive unique nonces for each ciphertext
-    uint256 private cipherNonce = 0;
+    uint256 private cipherNonce;
 
     /// @notice counter to derive unique nonces for each reencryption request
-    uint256 private requestNonce = 0;
+    uint256 private requestNonce;
 
     modifier onlyRelayer() {
         if (msg.sender != relayer) revert NotRelayer();
@@ -94,11 +95,12 @@ abstract contract EncryptionOracle is
     /// @param _reencryptionFee for requestReencryption()
     function _initialize(
         G1Point memory _distKey,
+        address _owner,
         address _relayer,
         uint96 _submissionFee,
         uint96 _reencryptionFee
     ) internal onlyInitializing {
-        __Ownable_init();
+        Ownable._initializeOwner(_owner);
         __Pausable_init();
         ThresholdNetworkUpgradeable._initialize(_distKey);
 
