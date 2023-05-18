@@ -1,21 +1,24 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import {DKGFactory} from "../../src/DKGFactory.sol";
+import {DKGManager} from "../../src/DKGManager.sol";
 import {OracleFactory} from "../../src/OracleFactory.sol";
+import {PermissionedDKGMembership} from
+    "../../src/PermissionedDKGMembership.sol";
 import {DKG} from "../../src/DKG.sol";
 import {BN254EncryptionOracle} from "../../src/BN254EncryptionOracle.sol";
 import {OnlyFiles} from "../../src/client/OnlyFiles.sol";
 
 library ScriptReturns {
     struct DeployFactories {
-        DKGFactory dkgFactory;
+        DKGManager dkgManager;
         OracleFactory oracleFactory;
-        address[] nodes;
     }
 
     struct DeployDKG {
         DKG dkg;
+        PermissionedDKGMembership dkgMembership;
+        address[] nodes;
     }
 
     struct DeployBN254EncryptionOracle {

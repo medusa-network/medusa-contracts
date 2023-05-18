@@ -42,15 +42,15 @@ contract DKG is ThresholdNetwork, IDKG {
     uint8 public constant BLOCKS_PER_PHASE = 10;
 
     /// @notice The block number at which this contract is deployed
-    uint256 public initTime;
+    uint256 public immutable initTime;
 
     /// @notice The ending block number for each phase
-    uint256 public registrationTime;
-    uint256 public dealTime;
-    uint256 public complaintTime;
+    uint256 public immutable registrationTime;
+    uint256 public immutable dealTime;
+    uint256 public immutable complaintTime;
 
     /// @notice Contracts telling who is authorized to participate or not in the DKG
-    IDKGMembership public membership;
+    IDKGMembership public immutable membership;
 
     /// @notice Maps participant index to hash of their deal
     mapping(uint32 => uint256) private dealHashes;

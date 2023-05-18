@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import {Bn128, G1Point} from "../src/utils/Bn128.sol";
 import {DKG} from "../src/DKG.sol";
 import {OracleFactory} from "../src/OracleFactory.sol";
-import {DKGFactory} from "../src/DKGFactory.sol";
+import {DKGManager} from "../src/DKGManager.sol";
 import {EncryptionOracle} from "../src/EncryptionOracle.sol";
 
 abstract contract BaseScript is Script {
@@ -38,8 +38,8 @@ abstract contract BaseScript is Script {
         return OracleFactory(vm.envAddress("ORACLE_FACTORY_ADDRESS"));
     }
 
-    function getDKGFactory() internal returns (DKGFactory) {
-        return DKGFactory(vm.envAddress("DKG_FACTORY_ADDRESS"));
+    function getDKGManager() internal returns (DKGManager) {
+        return DKGManager(vm.envAddress("DKG_MANAGER_ADDRESS"));
     }
 
     function getOracle() internal returns (EncryptionOracle) {
