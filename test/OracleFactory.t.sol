@@ -26,9 +26,10 @@ contract OracleFactoryTest is MedusaTest {
 
     function setUp() public {
         factoryDeployerScript = new DeployFactories();
-        oracleDeployerScript = new DeployBN254EncryptionOracle();
-
         factory = factoryDeployerScript.run().oracleFactory;
+        vm.setEnv("ORACLE_FACTORY_ADDRESS", vm.toString(address(factory)));
+
+        oracleDeployerScript = new DeployBN254EncryptionOracle();
     }
 
     function salt(address caller, uint8 counter)

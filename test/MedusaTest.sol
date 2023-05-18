@@ -35,5 +35,9 @@ abstract contract MedusaTest is Test {
         vm.setEnv(
             "NODE_3_ADDRESS", "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc"
         );
+
+        vm.setEnv("DKG_ADDRESS", "0x000000000000000000000000000000000000dEaD");
+        vm.setEnv("SUBMISSION_FEE", vm.toString(uint256(0.00005 ether)));
+        vm.setEnv("REENCRYPTION_FEE", vm.toString(uint256(0.0001 ether)));
     }
 }

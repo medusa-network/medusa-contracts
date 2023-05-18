@@ -11,7 +11,6 @@ import {EncryptionOracle} from "../src/EncryptionOracle.sol";
 
 abstract contract BaseScript is Script {
     using Strings for uint256;
-    using stdJson for string;
 
     /// @dev The address of the contract deployer.
     address public deployer;
