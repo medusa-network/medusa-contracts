@@ -19,7 +19,9 @@ contract DeployDKG is BaseScript {
             new PermissionedDKGMembership{salt: salt}(deployer);
 
         for (uint256 i = 0; i < nodes.length; i++) {
-            contracts.dkgMembership.addAuthorizedNode(nodes[i]);
+            if (nodes[i] != address(0)) {
+                contracts.dkgMembership.addAuthorizedNode(nodes[i]);
+            }
         }
 
         contracts.nodes = nodes;
@@ -34,7 +36,9 @@ contract DeployDKG is BaseScript {
         require(contracts.dkg.membership() == contracts.dkgMembership);
 
         for (uint256 i = 0; i < nodes.length; i++) {
-            require(contracts.dkgMembership.isAuthorizedNode(nodes[i]));
+            if (nodes[i] != address(0)) {
+                require(contracts.dkgMembership.isAuthorizedNode(nodes[i]));
+            }
         }
     }
 }
