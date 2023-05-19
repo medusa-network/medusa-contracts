@@ -3,7 +3,6 @@ pragma solidity ^0.8.19;
 
 import {MedusaTest} from "./MedusaTest.sol";
 import {PermissionedDKGMembership} from "../src/PermissionedDKGMembership.sol";
-import {Bn128} from "../src/utils/Bn128.sol";
 import {Ownable} from "solady/auth/Ownable.sol";
 
 contract PermissionedDKGMembershipTest is MedusaTest {

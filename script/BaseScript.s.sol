@@ -33,23 +33,27 @@ abstract contract BaseScript is Script {
         deployer = _deployer;
     }
 
-    function getOracleFactory() internal returns (OracleFactory) {
+    function getOracleFactory() internal view returns (OracleFactory) {
         return OracleFactory(vm.envAddress("ORACLE_FACTORY_ADDRESS"));
     }
 
-    function getDKGManager() internal returns (DKGManager) {
+    function getDKGManager() internal view returns (DKGManager) {
         return DKGManager(vm.envAddress("DKG_MANAGER_ADDRESS"));
     }
 
-    function getOracle() internal returns (EncryptionOracle) {
+    function getOracle() internal view returns (EncryptionOracle) {
         return EncryptionOracle(vm.envAddress("ORACLE_ADDRESS"));
     }
 
-    function getDKG() internal returns (DKG) {
+    function getDKG() internal view returns (DKG) {
         return DKG(vm.envAddress("DKG_ADDRESS"));
     }
 
-    function getNodes() internal returns (address[] memory) {
+    function getRelayer() internal view returns (address) {
+        return vm.envAddress("RELAYER");
+    }
+
+    function getNodes() internal view returns (address[] memory) {
         address[] memory nodes = new address[](3);
 
         for (uint256 i = 0; i < nodes.length; i++) {
@@ -73,7 +77,12 @@ abstract contract BaseScript is Script {
             size := extcodesize(dkg)
         }
 
-        if (size > 0) return dkg.distributedKey();
-        else return Bn128.g1Zero();
+        if (size > 0) {
+            return dkg.distributedKey();
+        } else {
+            uint256 x = vm.envOr("DIST_KEY_X", uint256(0));
+            uint256 y = vm.envOr("DIST_KEY_Y", uint256(0));
+            return G1Point(x, y);
+        }
     }
 }

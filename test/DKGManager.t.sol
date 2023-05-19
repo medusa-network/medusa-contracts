@@ -5,7 +5,6 @@ import {MedusaTest} from "./MedusaTest.sol";
 import {DKGManager} from "../src/DKGManager.sol";
 import {DKG} from "../src/DKG.sol";
 import {IDKGMembership} from "../src/interfaces/IDKGMembership.sol";
-import {Bn128} from "../src/utils/Bn128.sol";
 import {DeployFactories} from "../script/DeployFactories.s.sol";
 import {DeployDKG} from "../script/DeployDKG.s.sol";
 import {ScriptReturns} from "../script/types/ScriptReturns.sol";
@@ -15,9 +14,6 @@ contract DKGManagerTest is MedusaTest {
     DKGManager private manager;
     DKG private dkg;
     IDKGMembership private membership;
-
-    address private authorizedNode = makeAddr("authorizedNode");
-    address private notAuthorizedNode = makeAddr("notAuthorizedNode");
 
     event NewDKGCreated(address dkg);
 

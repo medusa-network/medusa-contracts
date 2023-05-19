@@ -10,7 +10,7 @@ import {ScriptReturns} from "./types/ScriptReturns.sol";
 
 contract DeployBN254EncryptionOracle is BaseScript {
     G1Point private distKey = getDistributedKey();
-    address private relayer = getNodes()[0];
+    address private relayer = getRelayer();
     OracleFactory private factory = getOracleFactory();
     uint96 private submissionFee = uint96(vm.envUint("SUBMISSION_FEE"));
     uint96 private reencryptionFee = uint96(vm.envUint("REENCRYPTION_FEE"));
