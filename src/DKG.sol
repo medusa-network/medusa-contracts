@@ -1,8 +1,17 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
-import {ArbSys, ARBITRUM_ONE, ARBITRUM_GOERLI} from "./ArbSys.sol";
+import {Bn128, G1Point, DleqProof} from "./utils/Bn128.sol";
+import {
+    ARB_SYS_PRECOMPILE_ADDRESS,
+    ARBITRUM_ONE,
+    ARBITRUM_GOERLI
+} from "./utils/Constants.sol";
+import {IArbSys} from "@openzeppelin/contracts/vendor/arbitrum/IArbSys.sol";
+import {ThresholdNetwork} from "./ThresholdNetwork.sol";
+import {IDKG, DealBundle, ComplaintReturn} from "./interfaces/IDKG.sol";
+import {IDKGMembership} from "./interfaces/IDKGMembership.sol";
+import {IThresholdNetwork} from "./interfaces/IThresholdNetwork.sol";
 
 error InvalidPhase();
 error ParticipantLimit();
@@ -13,78 +22,8 @@ error InvalidSharesCount();
 error InvalidCommitmentsCount();
 error InvalidCommitment(uint256 index);
 
-enum ComplaintReturn {
-    ValidComplaint,
-    InvalidDealerIdx,
-    InvalidHash,
-    InvalidDleq,
-    InvalidConsistentShare
-}
-
 // The final label to use in the DLEQ transcript
 uint256 constant COMPLAINT_LABEL = 1337;
-
-interface IThresholdNetwork {
-    function distributedKey() external view returns (G1Point memory);
-}
-
-/// @title ThresholdNetwork
-/// @author Cryptonet
-/// @notice This contract represents a threshold network.
-/// @dev All threshold networks have a distributed key;
-/// the DKG contract facilitates the generation of a key, whereas Oracle contracts are given a key
-
-abstract contract ThresholdNetwork is IThresholdNetwork {
-    G1Point internal distKey;
-
-    constructor(G1Point memory _distKey) {
-        distKey = _distKey;
-    }
-
-    function distributedKey() external view virtual returns (G1Point memory) {
-        return distKey;
-    }
-}
-
-/// @notice A bundle of deals submitted by each participant.
-struct DealBundle {
-    uint256[] encryptedShares;
-    G1Point[] commitment;
-}
-
-/// @notice An interface telling which addresses can participate to a DKG
-interface IDKGMembership {
-    function isAuthorizedNode(address participant)
-        external
-        view
-        returns (bool);
-}
-
-interface IDKG {
-    enum Phase {
-        REGISTRATION,
-        DEAL,
-        COMPLAINT,
-        DONE
-    }
-
-    /// @notice Emitted when a new participant registers during the registration phase.
-    /// @param from The address of the participant.
-    /// @param index The index of the participant.
-    /// @param tmpKey The temporary key of the participant.
-    event NewParticipant(address from, uint32 index, G1Point tmpKey);
-
-    /// @notice Emitted when a deal is submitted during the deal phase.
-    /// @param dealerIdx The index of the dealer submitting the deal.
-    /// @param bundle The deal bundle submitted by the dealer.
-    event DealBundleSubmitted(uint32 dealerIdx, DealBundle bundle);
-
-    /// @notice Emitted when a participant is evicted from the protocol. It can
-    /// happen during any phases.
-    /// @param from The address of the participant who got evicted
-    /// @param index The index of the participant who is evicted from the network.
-    event EvictedParticipant(address from, uint32 index);
-}
 
 /// @title Distributed Key Generation
 /// @notice This contract implements the trusted mediator for the Deji DKG protocol.
@@ -103,12 +42,15 @@ contract DKG is ThresholdNetwork, IDKG {
     uint8 public constant BLOCKS_PER_PHASE = 10;
 
     /// @notice The block number at which this contract is deployed
-    uint256 public initTime;
+    uint256 public immutable initTime;
 
     /// @notice The ending block number for each phase
-    uint256 public registrationTime;
-    uint256 public dealTime;
-    uint256 public complaintTime;
+    uint256 public immutable registrationTime;
+    uint256 public immutable dealTime;
+    uint256 public immutable complaintTime;
+
+    /// @notice Contracts telling who is authorized to participate or not in the DKG
+    IDKGMembership public immutable membership;
 
     /// @notice Maps participant index to hash of their deal
     mapping(uint32 => uint256) private dealHashes;
@@ -131,9 +73,6 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @notice Number of nodes registered
     /// @dev serves to designate the index
     uint32 private nbRegistered = 0;
-
-    /// @notice Contracts telling who is authorized to participate or not in the DKG
-    IDKGMembership private membership;
 
     modifier onlyRegistered() {
         if (addressIndex[msg.sender] == 0) {
@@ -391,7 +330,7 @@ contract DKG is ThresholdNetwork, IDKG {
     function distributedKey()
         public
         view
-        override
+        override(ThresholdNetwork, IThresholdNetwork)
         onlyPhase(Phase.DONE)
         returns (G1Point memory)
     {
@@ -417,7 +356,7 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @dev Calling block.number on Arbitrum returns the L1 block number, which is not desired
     function blockNumber() private view returns (uint256) {
         if (block.chainid == ARBITRUM_ONE || block.chainid == ARBITRUM_GOERLI) {
-            return ArbSys(address(100)).arbBlockNumber();
+            return IArbSys(ARB_SYS_PRECOMPILE_ADDRESS).arbBlockNumber();
         } else {
             return block.number;
         }

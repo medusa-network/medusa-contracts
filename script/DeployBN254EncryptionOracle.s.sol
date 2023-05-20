@@ -1,30 +1,64 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import "forge-std/Script.sol";
-import {OracleFactory} from "../src/OracleFactory.sol";
-import {DKG} from "../src/DKG.sol";
-import {G1Point} from "../src/Bn128.sol";
 import {BaseScript} from "./BaseScript.s.sol";
+import {G1Point} from "../src/utils/Bn128.sol";
+import {Suite} from "../src/interfaces/IEncryptionOracle.sol";
+import {BN254EncryptionOracle} from "../src/BN254EncryptionOracle.sol";
+import {OracleFactory} from "../src/OracleFactory.sol";
+import {ScriptReturns} from "./types/ScriptReturns.sol";
 
 contract DeployBN254EncryptionOracle is BaseScript {
-    function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address relayer = vm.envAddress("NODE_1_ADDRESS");
-        uint96 submissionFee = uint96(vm.envUint("SUBMISSION_FEE"));
-        uint96 reencryptionFee = uint96(vm.envUint("REENCRYPTION_FEE"));
+    G1Point private distKey = getDistributedKey();
+    address private relayer = getRelayer();
+    OracleFactory private factory = getOracleFactory();
+    uint96 private submissionFee = uint96(vm.envUint("SUBMISSION_FEE"));
+    uint96 private reencryptionFee = uint96(vm.envUint("REENCRYPTION_FEE"));
 
-        vm.startBroadcast(deployerPrivateKey);
+    ScriptReturns.DeployBN254EncryptionOracle private contracts;
 
-        OracleFactory factory = OracleFactory(getOracleFactoryAddress());
-        factory.deployReencryption_BN254_G1_HGAMAL(
-            getDistributedKey(), relayer, submissionFee, reencryptionFee
-        );
-        vm.stopBroadcast();
+    function run()
+        external
+        returns (ScriptReturns.DeployBN254EncryptionOracle memory)
+    {
+        contracts = deploy(factory, salt);
+        assertions();
+        print("BN254EncryptionOracle", address(contracts.oracle));
+        return contracts;
     }
 
-    function getDistributedKey() private returns (G1Point memory) {
-        DKG dkg = DKG(getDKGInstanceAddress());
-        return dkg.distributedKey();
+    function deploy(OracleFactory _factory, bytes32 _salt)
+        public
+        broadcaster
+        returns (ScriptReturns.DeployBN254EncryptionOracle memory _contracts)
+    {
+        _contracts.impl = new BN254EncryptionOracle();
+
+        address proxy = _factory.deployDeterministicAndCall(
+            address(_contracts.impl),
+            deployer,
+            _salt,
+            abi.encodeWithSelector(
+                BN254EncryptionOracle.initialize.selector,
+                distKey,
+                deployer,
+                relayer,
+                submissionFee,
+                reencryptionFee
+            )
+        );
+
+        _contracts.oracle = BN254EncryptionOracle(proxy);
+        return _contracts;
+    }
+
+    function assertions() private view {
+        require(contracts.oracle.distributedKey().x == distKey.x);
+        require(contracts.oracle.distributedKey().y == distKey.y);
+        require(contracts.oracle.owner() == deployer);
+        require(contracts.oracle.relayer() == relayer);
+        require(contracts.oracle.submissionFee() == submissionFee);
+        require(contracts.oracle.reencryptionFee() == reencryptionFee);
+        require(contracts.oracle.suite() == Suite.BN254_KEYG1_HGAMAL);
     }
 }
