@@ -23,6 +23,7 @@ contract DeployBN254EncryptionOracle is BaseScript {
     {
         contracts = deploy(factory, salt);
         assertions();
+        print("BN254EncryptionOracle", address(contracts.oracle));
         return contracts;
     }
 

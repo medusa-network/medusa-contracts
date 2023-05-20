@@ -20,6 +20,8 @@ contract DeployFactories is BaseScript {
         contracts.oracleFactory = new OracleFactory{salt: salt}(deployer);
 
         assertions();
+        print("DKGManager", address(contracts.dkgManager));
+        print("OracleFactory", address(contracts.oracleFactory));
         return contracts;
     }
 

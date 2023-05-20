@@ -85,4 +85,17 @@ abstract contract BaseScript is Script {
             return G1Point(x, y);
         }
     }
+
+    function print(string memory contractName, address contractAddress)
+        internal
+        view
+    {
+        console2.log(
+            string(
+                abi.encodePacked(
+                    contractName, "@", vm.toString(address(contractAddress))
+                )
+            )
+        );
+    }
 }

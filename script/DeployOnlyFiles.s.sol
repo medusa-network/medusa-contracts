@@ -16,6 +16,8 @@ contract DeployOnlyFiles is BaseScript {
     {
         contracts.onlyFiles = new OnlyFiles(getOracle());
         assertions();
+
+        print("OnlyFiles", address(contracts.onlyFiles));
         return contracts;
     }
 

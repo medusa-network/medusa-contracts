@@ -29,6 +29,9 @@ contract DeployDKG is BaseScript {
         getDKGManager().registerNewDKG(contracts.dkg);
 
         assertions();
+
+        print("DKG", address(contracts.dkg));
+        print("PermissionedDKGMembership", address(contracts.dkgMembership));
         return contracts;
     }
 
