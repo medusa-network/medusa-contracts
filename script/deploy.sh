@@ -3,9 +3,9 @@
 source ./.env
 
 # Note: Ensure network rpc is configured in ./foundry.toml
-NETWORK="hyperspace"
+# NETWORK="hyperspace"
 # NETWORK="wallaby"
-# NETWORK="arbitrum-goerli"
+NETWORK="arbitrum-sepolia"
 
 NODES=($NODE_1_ADDRESS $NODE_2_ADDRESS $NODE_3_ADDRESS)
 # -- Step 1 --

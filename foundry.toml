@@ -16,10 +16,14 @@ line_length = 80
 [rpc_endpoints]
 local = "http://localhost:8545"
 arbitrum = "https://arb1.arbitrum.io/rpc"
-arbitrum-goerli = "${ARBITRUM_GOERLI_RPC_URL}"
+arbitrum-sepolia = "${ARBITRUM_SEPOLIA_RPC_URL}"
 wallaby = "https://wallaby.node.glif.io/rpc/v1"
 hyperspace = "https://api.hyperspace.node.glif.io/rpc/v1"
 
 [etherscan]
-arbitrum = { key = "${ETHERSCAN_KEY}" }
-arbitrum-goerli = { key = "${ETHERSCAN_KEY}" }
+arbitrum = { key = "${ETHERSCAN_KEY}", url = "https://api.arbiscan.io/api" }
+arbitrum-sepolia = { key = "${ETHERSCAN_KEY}", url = "https://api-sepolia.arbiscan.io/api" }
+
+# Chain IDs for verification
+# Arbitrum One: 42161
+# Arbitrum Sepolia: 421614
