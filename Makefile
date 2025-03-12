@@ -23,6 +23,9 @@ local_deploy_dkgfactory   :; forge script script/DeployDKGFactory.s.sol:DeployDK
 testnet_deploy_dkgfactory :; forge script script/DeployDKGFactory.s.sol:DeployDKGFactory --rpc-url arbitrum-goerli --broadcast -vvvv --skip-simulation --slow
 sepolia_deploy_dkgfactory :; forge script script/DeployDKGFactory.s.sol:DeployDKGFactory --rpc-url arbitrum-sepolia --broadcast -vvvv --skip-simulation --slow
 
+# Test block number function
+sepolia_test_block_number:; forge script script/TestBlockNumber.s.sol:TestBlockNumber --rpc-url arbitrum-sepolia -vvvv
+
 local_deploy_oraclefactory  :; forge script script/DeployOracleFactory.s.sol:DeployOracleFactory --rpc-url local --broadcast --verify -vvvv
 testnet_deploy_oraclefactory:; forge script script/DeployOracleFactory.s.sol:DeployOracleFactory --rpc-url arbitrum-goerli --broadcast -vvvv --skip-simulation --slow
 sepolia_deploy_oraclefactory:; forge script script/DeployOracleFactory.s.sol:DeployOracleFactory --rpc-url arbitrum-sepolia --broadcast -vvvv --skip-simulation --slow
@@ -165,3 +168,59 @@ sepolia_is_authorized_node3:; cast call ${DKG_FACTORY_ADDRESS} \
 sepolia_get_latest_dkg:; cast call ${DKG_FACTORY_ADDRESS} \
 						"getLatestDKG()(address)" \
 						--rpc-url arbitrum-sepolia
+
+# Deploy and test ArbSysTest contract
+sepolia_deploy_arbsys_test:; forge script script/DeployArbSysTest.s.sol:DeployArbSysTest --rpc-url arbitrum-sepolia --broadcast -vvvv --skip-simulation --slow
+
+sepolia_test_arbsys:; forge script script/TestArbSys.s.sol:TestArbSys --rpc-url arbitrum-sepolia -vvvv
+
+# Deploy and test ArbSysAssemblyTest contract
+sepolia_deploy_arbsys_assembly_test:; forge script script/DeployArbSysAssemblyTest.s.sol:DeployArbSysAssemblyTest --rpc-url arbitrum-sepolia --broadcast -vvvv --skip-simulation --slow
+
+sepolia_test_arbsys_assembly:; forge script script/TestArbSysAssembly.s.sol:TestArbSysAssembly --rpc-url arbitrum-sepolia -vvvv
+
+# --- Holesky Deployment ---
+holesky_deploy_dkgfactory:; forge script script/DeployDKGFactory.s.sol:DeployDKGFactory --rpc-url ${HOLESKY_RPC_URL} --broadcast --verify --etherscan-api-key ${HOLESKY_ETHERSCAN_KEY} -vvvv --slow
+
+holesky_deploy_oraclefactory:; forge script script/DeployOracleFactory.s.sol:DeployOracleFactory --rpc-url ${HOLESKY_RPC_URL} --broadcast --verify --etherscan-api-key ${HOLESKY_ETHERSCAN_KEY} -vvvv --slow
+
+holesky_add_authorized_node1:; cast send ${DKG_FACTORY_ADDRESS} \
+		"addAuthorizedNode(address)(bool)" \
+		${NODE_1_ADDRESS} \
+		--rpc-url ${HOLESKY_RPC_URL} \
+		--private-key ${PRIVATE_KEY}
+
+holesky_add_authorized_node2:; cast send ${DKG_FACTORY_ADDRESS} \
+		"addAuthorizedNode(address)(bool)" \
+		${NODE_2_ADDRESS} \
+		--rpc-url ${HOLESKY_RPC_URL} \
+		--private-key ${PRIVATE_KEY}
+
+holesky_add_authorized_node3:; cast send ${DKG_FACTORY_ADDRESS} \
+		"addAuthorizedNode(address)(bool)" \
+		${NODE_3_ADDRESS} \
+		--rpc-url ${HOLESKY_RPC_URL} \
+		--private-key ${PRIVATE_KEY}
+
+# Add all three nodes at once
+holesky_add_all_nodes: holesky_add_authorized_node1 holesky_add_authorized_node2 holesky_add_authorized_node3
+
+holesky_deploy_dkg:; forge script script/DeployDKGInstance.s.sol:DeployDKGInstance --rpc-url ${HOLESKY_RPC_URL} --broadcast --verify --etherscan-api-key ${HOLESKY_ETHERSCAN_KEY} -vvvv --slow
+
+holesky_deploy_dkg_manual:; cast send ${DKG_FACTORY_ADDRESS} \
+	"deployNewDKG()" \
+	--rpc-url ${HOLESKY_RPC_URL} \
+	--private-key ${PRIVATE_KEY}
+
+holesky_test_block_number:; forge script script/TestBlockNumber.s.sol:TestBlockNumber --rpc-url ${HOLESKY_RPC_URL} -vvvv
+
+# Convenience target for full Holesky deployment
+holesky_deploy_all: holesky_deploy_dkgfactory holesky_deploy_oraclefactory holesky_add_all_nodes holesky_deploy_dkg
+
+holesky_deploy_oracle_manual:; cast send ${ORACLE_FACTORY_ADDRESS} \
+		"deployReencryption_BN254_G1_HGAMAL((uint256, uint256), address, uint96, uint96)(address)" \
+		"(${DIST_KEY})" ${NODE_1_ADDRESS} ${SUBMISSION_FEE} ${REENCRYPTION_FEE} \
+		--rpc-url ${HOLESKY_RPC_URL} \
+		--private-key ${PRIVATE_KEY}
+
+holesky_deploy_client:; forge script script/DeployOnlyFiles.s.sol:DeployOnlyFiles --rpc-url ${HOLESKY_RPC_URL} --broadcast --verify --etherscan-api-key ${HOLESKY_ETHERSCAN_KEY} -vvvv --slow

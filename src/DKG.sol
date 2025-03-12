@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
-import {ArbSys, ARBITRUM_ONE, ARBITRUM_GOERLI} from "./ArbSys.sol";
+import {ArbSys, ARBITRUM_ONE, ARBITRUM_GOERLI, ARBITRUM_SEPOLIA} from "./ArbSys.sol";
 
 error InvalidPhase();
 error ParticipantLimit();
@@ -416,7 +416,8 @@ contract DKG is ThresholdNetwork, IDKG {
     /// @notice returns the current block number of the chain of execution
     /// @dev Calling block.number on Arbitrum returns the L1 block number, which is not desired
     function blockNumber() private view returns (uint256) {
-        if (block.chainid == ARBITRUM_ONE || block.chainid == ARBITRUM_GOERLI) {
+        if (block.chainid == ARBITRUM_ONE || block.chainid == ARBITRUM_GOERLI || block.chainid == ARBITRUM_SEPOLIA) {
+            // On Arbitrum networks, we need to use the L2 block number
             return ArbSys(address(100)).arbBlockNumber();
         } else {
             return block.number;
