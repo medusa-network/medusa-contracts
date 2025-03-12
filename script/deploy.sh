@@ -5,7 +5,8 @@ source ./.env
 # Note: Ensure network rpc is configured in ./foundry.toml
 # NETWORK="hyperspace"
 # NETWORK="wallaby"
-NETWORK="arbitrum-sepolia"
+#NETWORK="arbitrum-sepolia"
+NETWORK=$ARBITRUM_SEPOLIA_RPC_URL
 
 NODES=($NODE_1_ADDRESS $NODE_2_ADDRESS $NODE_3_ADDRESS)
 # -- Step 1 --
@@ -18,6 +19,7 @@ NODES=($NODE_1_ADDRESS $NODE_2_ADDRESS $NODE_3_ADDRESS)
 
 # -- Step 2 --
     # a. Deploy OracleFactory
+    #
     forge script script/DeployOracleFactory.s.sol:DeployOracleFactory --rpc-url $NETWORK --broadcast -vvvv --skip-simulation --slow
     # b. Now save the newly deployed address as the ORACLE_FACTORY_ADDRESS in ./.env 
     # c. Also, copy the address to medusa-network/medusa/deploy/deploy.sh
