@@ -1,151 +1,69 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import "forge-std/Test.sol";
+import {MedusaTest} from "./MedusaTest.sol";
 import {OracleFactory} from "../src/OracleFactory.sol";
-import {EncryptionOracle} from "../src/EncryptionOracle.sol";
-import {Bn128, G1Point} from "../src/Bn128.sol";
+import {ERC1967Factory} from "solady/utils/ERC1967Factory.sol";
+import {Ownable} from "solady/auth/Ownable.sol";
+import {
+    EncryptionOracle, NotRelayerOrOwner
+} from "../src/EncryptionOracle.sol";
+import {BN254EncryptionOracle} from "../src/BN254EncryptionOracle.sol";
+import {Bn128, G1Point} from "../src/utils/Bn128.sol";
+import {DeployFactories} from "../script/DeployFactories.s.sol";
+import {DeployBN254EncryptionOracle} from
+    "../script/DeployBN254EncryptionOracle.s.sol";
 
-contract OracleFactoryTest is Test {
+contract OracleFactoryTest is MedusaTest {
+    DeployFactories private factoryDeployerScript;
+    DeployBN254EncryptionOracle private oracleDeployerScript;
+    uint8 private deploymentCounter;
+
     OracleFactory private factory;
-    address relayer = makeAddr("relayer");
+    EncryptionOracle private oracle;
+
+    event NewOracleDeployed(address oracle);
 
     function setUp() public {
-        factory = new OracleFactory();
+        factoryDeployerScript = new DeployFactories();
+        factory = factoryDeployerScript.run().oracleFactory;
+        vm.setEnv("ORACLE_FACTORY_ADDRESS", vm.toString(address(factory)));
+
+        oracleDeployerScript = new DeployBN254EncryptionOracle();
+    }
+
+    function salt(address caller, uint8 counter)
+        private
+        pure
+        returns (bytes32)
+    {
+        return bytes32(abi.encodePacked(caller, counter));
+    }
+
+    function deployOracle(bytes32 _salt) private returns (EncryptionOracle) {
+        deploymentCounter += 1;
+
+        EncryptionOracle _oracle =
+            oracleDeployerScript.deploy(factory, _salt).oracle;
+        return _oracle;
     }
 
     function testDeployNewOracle() public {
-        address oracleAddress = factory.deployReencryption_BN254_G1_HGAMAL(
-            Bn128.g1Zero(), relayer, 0, 0
+        bytes32 _salt = salt(
+            address(oracleDeployerScript.deployer()), deploymentCounter + 1
         );
-        assertEq(factory.oracles(oracleAddress), true);
-
-        address secondOracleAddress = factory.deployReencryption_BN254_G1_HGAMAL(
-            Bn128.g1Zero(), relayer, 0, 0
-        );
-        assertEq(factory.oracles(secondOracleAddress), true);
-
-        assertFalse(oracleAddress == secondOracleAddress);
+        address proxy = factory.predictDeterministicAddress(_salt);
+        vm.expectEmit(true, true, false, false);
+        emit NewOracleDeployed(proxy);
+        deployOracle(_salt);
     }
 
-    function testCannotDeployNewOracle() public {
-        vm.prank(address(uint160(12345)));
-        vm.expectRevert("Ownable: caller is not the owner");
-        factory.deployReencryption_BN254_G1_HGAMAL(
-            Bn128.g1Zero(), relayer, 0, 0
-        );
-    }
+    function testCannotDeployNewOracleIfNotOwner() public {
+        oracleDeployerScript.setDeployer(notOwner);
+        bytes32 _salt =
+            salt(address(oracleDeployerScript.deployer()), deploymentCounter);
 
-    function testPauseOracle() public {
-        address oracleAddress = factory.deployReencryption_BN254_G1_HGAMAL(
-            Bn128.g1Zero(), relayer, 0, 0
-        );
-
-        assertFalse(EncryptionOracle(oracleAddress).paused());
-        factory.pauseOracle(oracleAddress);
-        assertTrue(EncryptionOracle(oracleAddress).paused());
-    }
-
-    function testCannotPauseOracleIfNotOwner() public {
-        address oracleAddress = factory.deployReencryption_BN254_G1_HGAMAL(
-            Bn128.g1Zero(), relayer, 0, 0
-        );
-
-        assertFalse(EncryptionOracle(oracleAddress).paused());
-        address notOwner = makeAddr("notOwner");
-        vm.expectRevert("Ownable: caller is not the owner");
-        hoax(notOwner);
-        factory.pauseOracle(oracleAddress);
-        assertFalse(EncryptionOracle(oracleAddress).paused());
-    }
-
-    function testUnpauseOracle() public {
-        address oracleAddress = factory.deployReencryption_BN254_G1_HGAMAL(
-            Bn128.g1Zero(), relayer, 0, 0
-        );
-
-        factory.pauseOracle(oracleAddress);
-        assertTrue(EncryptionOracle(oracleAddress).paused());
-        factory.unpauseOracle(oracleAddress);
-        assertFalse(EncryptionOracle(oracleAddress).paused());
-    }
-
-    function testCannotUnpauseOracleIfNotOwner() public {
-        address oracleAddress = factory.deployReencryption_BN254_G1_HGAMAL(
-            Bn128.g1Zero(), relayer, 0, 0
-        );
-
-        factory.pauseOracle(oracleAddress);
-        assertTrue(EncryptionOracle(oracleAddress).paused());
-        address notOwner = makeAddr("notOwner");
-        vm.expectRevert("Ownable: caller is not the owner");
-        hoax(notOwner);
-        factory.unpauseOracle(oracleAddress);
-        assertTrue(EncryptionOracle(oracleAddress).paused());
-    }
-
-    function testUpdateRelayer() public {
-        address oracleAddress = factory.deployReencryption_BN254_G1_HGAMAL(
-            Bn128.g1Zero(), relayer, 0, 0
-        );
-        address newRelayer = makeAddr("newRelayer");
-
-        factory.updateRelayer(oracleAddress, newRelayer);
-        assert(EncryptionOracle(oracleAddress).relayer() == newRelayer);
-    }
-
-    function testCannotUpdateRelayerIfNotOwner() public {
-        address oracleAddress = factory.deployReencryption_BN254_G1_HGAMAL(
-            Bn128.g1Zero(), relayer, 0, 0
-        );
-        address notOwner = makeAddr("notOwner");
-        address newRelayer = makeAddr("newRelayer");
-
-        vm.expectRevert("Ownable: caller is not the owner");
-        hoax(notOwner);
-        factory.updateRelayer(oracleAddress, newRelayer);
-        assert(EncryptionOracle(oracleAddress).relayer() == relayer);
-    }
-
-    function testUpdateSubmissionFee() public {
-        address oracleAddress = factory.deployReencryption_BN254_G1_HGAMAL(
-            Bn128.g1Zero(), relayer, 0, 0
-        );
-
-        factory.updateSubmissionFee(oracleAddress, 1);
-        assert(EncryptionOracle(oracleAddress).submissionFee() == 1);
-    }
-
-    function testCannotUpdateSubmissionFeeIfNotOwner() public {
-        address oracleAddress = factory.deployReencryption_BN254_G1_HGAMAL(
-            Bn128.g1Zero(), relayer, 0, 0
-        );
-        address notOwner = makeAddr("notOwner");
-
-        vm.expectRevert("Ownable: caller is not the owner");
-        hoax(notOwner);
-        factory.updateSubmissionFee(oracleAddress, 1);
-        assert(EncryptionOracle(oracleAddress).submissionFee() == 0);
-    }
-
-    function testUpdateReencryptionFee() public {
-        address oracleAddress = factory.deployReencryption_BN254_G1_HGAMAL(
-            Bn128.g1Zero(), relayer, 0, 0
-        );
-
-        factory.updateReencryptionFee(oracleAddress, 1);
-        assert(EncryptionOracle(oracleAddress).reencryptionFee() == 1);
-    }
-
-    function testCannotUpdateReencryptionFeeIfNotOwner() public {
-        address oracleAddress = factory.deployReencryption_BN254_G1_HGAMAL(
-            Bn128.g1Zero(), relayer, 0, 0
-        );
-        address notOwner = makeAddr("notOwner");
-
-        vm.expectRevert("Ownable: caller is not the owner");
-        hoax(notOwner);
-        factory.updateReencryptionFee(oracleAddress, 1);
-        assert(EncryptionOracle(oracleAddress).reencryptionFee() == 0);
+        vm.expectRevert(Ownable.Unauthorized.selector);
+        deployOracle(_salt);
     }
 }

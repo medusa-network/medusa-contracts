@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import "forge-std/Test.sol";
+import {MedusaTest} from "./MedusaTest.sol";
 import {
     Ciphertext,
     ReencryptedCipher,
@@ -16,18 +16,25 @@ import {
     NotRelayerOrOwner,
     InsufficientFunds
 } from "../src/EncryptionOracle.sol";
-import {MedusaClient} from "../src/MedusaClient.sol";
+import {MedusaClient} from "../src/client/MedusaClient.sol";
 import {IEncryptionClient} from "../src/interfaces/IEncryptionClient.sol";
-import {Suite} from "../src/OracleFactory.sol";
-import {G1Point, DleqProof, Bn128} from "../src/Bn128.sol";
+import {Suite} from "../src/interfaces/IEncryptionOracle.sol";
+import {G1Point, DleqProof, Bn128} from "../src/utils/Bn128.sol";
+import {Initializable} from
+    "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {Ownable} from "solady/auth/Ownable.sol";
 
-contract MockEncryptionOracle is EncryptionOracle {
-    constructor(
+contract MockEncryptionOracle is Initializable, EncryptionOracle {
+    function initialize(
         G1Point memory _distKey,
         address _relayer,
         uint96 _submissionFee,
         uint96 _reencryptionFee
-    ) EncryptionOracle(_distKey, _relayer, _submissionFee, _reencryptionFee) {}
+    ) public initializer {
+        EncryptionOracle._initialize(
+            _distKey, msg.sender, _relayer, _submissionFee, _reencryptionFee
+        );
+    }
 
     function suite() external pure override returns (Suite) {
         return Suite.BN254_KEYG1_HGAMAL;
@@ -70,9 +77,8 @@ contract MockReentrantRelayer {
     }
 }
 
-contract EncryptionOracleTest is Test {
+contract EncryptionOracleTest is MedusaTest {
     MockEncryptionOracle public oracle;
-    address public relayer = makeAddr("relayer");
     uint96 public submissionFee = 0.001 ether;
     uint96 public reencryptionFee = 0.002 ether;
 
@@ -87,11 +93,9 @@ contract EncryptionOracleTest is Test {
     );
 
     function setUp() public {
-        oracle = new MockEncryptionOracle(
-            dummyPublicKey(),
-            relayer,
-            submissionFee,
-            reencryptionFee
+        oracle = new MockEncryptionOracle();
+        oracle.initialize(
+            dummyPublicKey(), relayer, submissionFee, reencryptionFee
         );
     }
 
@@ -129,9 +133,9 @@ contract EncryptionOracleTest is Test {
     }
 
     function testCannotPauseIfNotOwner() public {
-        address notOwner = makeAddr("notOwner");
-        vm.expectRevert("Ownable: caller is not the owner");
-        hoax(notOwner);
+        assertFalse(oracle.paused());
+        vm.expectRevert(Ownable.Unauthorized.selector);
+        vm.prank(notOwner);
 
         oracle.pause();
         assertFalse(oracle.paused());
@@ -149,10 +153,8 @@ contract EncryptionOracleTest is Test {
         oracle.pause();
         assertTrue(oracle.paused());
 
-        address notOwner = makeAddr("notOwner");
-        vm.expectRevert("Ownable: caller is not the owner");
-        hoax(notOwner);
-
+        vm.expectRevert(Ownable.Unauthorized.selector);
+        vm.prank(notOwner);
         oracle.unpause();
         assertTrue(oracle.paused());
     }
@@ -188,8 +190,7 @@ contract EncryptionOracleTest is Test {
         uint96 oldFee = oracle.submissionFee();
         uint96 newFee = oldFee + 1;
 
-        address notOwner = makeAddr("notOwner");
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(Ownable.Unauthorized.selector);
         vm.prank(notOwner);
         oracle.updateSubmissionFee(newFee);
 
@@ -206,8 +207,7 @@ contract EncryptionOracleTest is Test {
         uint96 oldFee = oracle.reencryptionFee();
         uint96 newFee = oldFee + 1;
 
-        address notOwner = makeAddr("notOwner");
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(Ownable.Unauthorized.selector);
         vm.prank(notOwner);
         oracle.updateReencryptionFee(newFee);
 
@@ -291,6 +291,10 @@ contract EncryptionOracleTest is Test {
             otherRandomCipherId, publicKey
         );
         assertEq(requestId, 2);
+    }
+
+    function testGasRequestReencryption() public {
+        oracle.requestReencryption{value: 1 ether}(1, G1Point(23476, 23478));
     }
 
     function testCannotRequestReencryptionIfInsufficientFunds() public {
@@ -391,7 +395,8 @@ contract EncryptionOracleTest is Test {
 
     function testCannotDeliverReencryptionWithReentrantAttack() public {
         MockReentrantRelayer reentrantRelayer = new MockReentrantRelayer();
-        oracle = new MockEncryptionOracle(
+        oracle = new MockEncryptionOracle();
+        oracle.initialize(
             dummyPublicKey(),
             address(reentrantRelayer),
             submissionFee,

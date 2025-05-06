@@ -1,21 +1,18 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import {
-    Ciphertext,
-    IEncryptionOracle as IO
-} from "../src/interfaces/IEncryptionOracle.sol";
+import {Ciphertext} from "../src/interfaces/IEncryptionOracle.sol";
 import {BN254EncryptionOracle} from "../src/BN254EncryptionOracle.sol";
-import {RoleACL} from "../src/RoleACL.sol";
-import {Bn128, G1Point} from "../src/Bn128.sol";
-import "forge-std/Test.sol";
+import {RoleACL} from "../src/client/RoleACL.sol";
+import {Bn128, G1Point} from "../src/utils/Bn128.sol";
+import {MedusaTest} from "./MedusaTest.sol";
 
-contract RoleACLTest is Test {
-    IO oracle;
+contract RoleACLTest is MedusaTest {
+    BN254EncryptionOracle oracle;
 
     function setUp() public {
-        address relayer = address(0);
-        oracle = new BN254EncryptionOracle(Bn128.g1Zero(), relayer, 0, 0);
+        oracle = new BN254EncryptionOracle();
+        oracle.initialize(Bn128.g1Zero(), address(this), relayer, 0, 0);
     }
 
     function testSubmitCiphertext() public {

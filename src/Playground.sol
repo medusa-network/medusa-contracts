@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {BN254EncryptionOracle} from "./BN254EncryptionOracle.sol";
-import {COMPLAINT_LABEL, IDKGMembership} from "./DKG.sol";
+import {COMPLAINT_LABEL} from "./DKG.sol";
+import {IDKGMembership} from "./interfaces/IDKGMembership.sol";
 import {Ciphertext} from "./interfaces/IEncryptionOracle.sol";
-import {Bn128, G1Point, DleqProof} from "./Bn128.sol";
+import {Bn128, G1Point, DleqProof} from "./utils/Bn128.sol";
 
 //import {Dleq} from "./DleqBN128.sol";
 
@@ -22,7 +22,10 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
 
     /*altbn128.G1Point private acc2;*/
 
-    constructor() BN254EncryptionOracle(Bn128.g1Zero(), address(0), 0, 0) {
+    constructor() {
+        BN254EncryptionOracle.initialize(
+            Bn128.g1Zero(), msg.sender, address(0), 0, 0
+        );
         accumulator = Bn128.g1Zero();
         /*acc2 = altbn128.P1();*/
         /*acc2.X = 0;*/
@@ -131,11 +134,9 @@ contract Playground is BN254EncryptionOracle, IDKGMembership {
         uint96 submissionFee,
         uint96 reencryptionFee
     ) public returns (address) {
-        BN254EncryptionOracle _oracle = new BN254EncryptionOracle(
-            distkey,
-            relayer,
-            submissionFee,
-            reencryptionFee
+        BN254EncryptionOracle _oracle = new BN254EncryptionOracle();
+        _oracle.initialize(
+            distkey, msg.sender, relayer, submissionFee, reencryptionFee
         );
         oracle = address(_oracle);
         distKey = distkey;

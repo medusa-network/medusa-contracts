@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT AND Apache-2.0
 pragma solidity ^0.8.19;
 
-import "ds-test/test.sol";
-import "forge-std/Test.sol";
+import {MedusaTest} from "./MedusaTest.sol";
 import {Playground} from "../src/Playground.sol";
-import {Bn128, ModUtils, G1Point, DleqProof} from "../src/Bn128.sol";
+import {Bn128, ModUtils, G1Point, DleqProof} from "../src/utils/Bn128.sol";
 
-contract PlaygroundTest is Test {
+contract PlaygroundTest is MedusaTest {
     using ModUtils for uint256;
 
     Playground private client;

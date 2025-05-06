@@ -3,69 +3,99 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Script.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import {Bn128, G1Point} from "../src/utils/Bn128.sol";
+import {DKG} from "../src/DKG.sol";
+import {OracleFactory} from "../src/OracleFactory.sol";
+import {DKGManager} from "../src/DKGManager.sol";
+import {EncryptionOracle} from "../src/EncryptionOracle.sol";
 
 abstract contract BaseScript is Script {
     using Strings for uint256;
-    using stdJson for string;
 
-    function getOracleFactoryAddress() internal returns (address) {
-        return vm.envAddress("ORACLE_FACTORY_ADDRESS");
+    /// @dev The address of the contract deployer.
+    address public deployer;
+
+    // @dev The salt used for deterministic deployment addresses with CREATE2
+    bytes32 internal salt;
+
+    modifier broadcaster() {
+        vm.startBroadcast(deployer);
+        _;
+        vm.stopBroadcast();
     }
 
-    function getDKGFactoryAddress() internal returns (address) {
-        return vm.envAddress("DKG_FACTORY_ADDRESS");
+    constructor() {
+        deployer = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
+        salt = bytes32(abi.encodePacked(deployer, "MEDUSA_V0"));
     }
 
-    function getOracleInstanceAddress() internal returns (address) {
-        return vm.envAddress("ORACLE_ADDRESS");
+    function setDeployer(address _deployer) public {
+        deployer = _deployer;
     }
 
-    function getDKGInstanceAddress() internal returns (address) {
-        return vm.envAddress("DKG_ADDRESS");
+    function getOracleFactory() internal view returns (OracleFactory) {
+        return OracleFactory(vm.envAddress("ORACLE_FACTORY_ADDRESS"));
     }
 
-    function getOracleFactoryAddressFromBroadcast()
+    function getDKGManager() internal view returns (DKGManager) {
+        return DKGManager(vm.envAddress("DKG_MANAGER_ADDRESS"));
+    }
+
+    function getOracle() internal view returns (EncryptionOracle) {
+        return EncryptionOracle(vm.envAddress("ORACLE_ADDRESS"));
+    }
+
+    function getDKG() internal view returns (DKG) {
+        return DKG(vm.envAddress("DKG_ADDRESS"));
+    }
+
+    function getRelayer() internal view returns (address) {
+        return vm.envAddress("RELAYER");
+    }
+
+    function getNodes() internal view returns (address[] memory) {
+        address[] memory nodes = new address[](3);
+
+        for (uint256 i = 0; i < nodes.length; i++) {
+            address node = vm.envAddress(
+                string(
+                    abi.encodePacked("NODE_", (i + 1).toString(), "_ADDRESS")
+                )
+            );
+            nodes[i] = node;
+        }
+
+        return nodes;
+    }
+
+    function getDistributedKey() internal returns (G1Point memory) {
+        uint32 size;
+        DKG dkg = getDKG();
+
+        // Check if DKG is deployed
+        assembly {
+            size := extcodesize(dkg)
+        }
+
+        if (size > 0) {
+            return dkg.distributedKey();
+        } else {
+            uint256 x = vm.envOr("DIST_KEY_X", uint256(0));
+            uint256 y = vm.envOr("DIST_KEY_Y", uint256(0));
+            return G1Point(x, y);
+        }
+    }
+
+    function print(string memory contractName, address contractAddress)
         internal
-        returns (address)
+        view
     {
-        string memory filename = string(
-            abi.encodePacked(
-                "broadcast/DeployOracleFactory.s.sol/",
-                block.chainid.toString(),
-                "/run-latest.json"
+        console2.log(
+            string(
+                abi.encodePacked(
+                    contractName, "@", vm.toString(address(contractAddress))
+                )
             )
         );
-        string memory json = vm.readFile(filename);
-        address factoryAddr =
-            json.readAddress(".transactions[0].contractAddress");
-        return factoryAddr;
-    }
-
-    function getDKGFactoryAddressFromBroadcast() internal returns (address) {
-        string memory filename = string(
-            abi.encodePacked(
-                "broadcast/DeployDKGFactory.s.sol/",
-                block.chainid.toString(),
-                "/run-latest.json"
-            )
-        );
-        string memory json = vm.readFile(filename);
-        address factoryAddr =
-            json.readAddress(".transactions[0].contractAddress");
-        return factoryAddr;
-    }
-
-    function getDKGInstanceAddressFromBroadcast() internal returns (address) {
-        string memory filename = string(
-            abi.encodePacked(
-                "broadcast/DeployDKGInstance.s.sol/",
-                block.chainid.toString(),
-                "/run-latest.json"
-            )
-        );
-        string memory json = vm.readFile(filename);
-        address factoryAddr =
-            json.readAddress(".transactions[0].additionalContracts[0].address");
-        return factoryAddr;
     }
 }

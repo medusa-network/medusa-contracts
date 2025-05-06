@@ -5,7 +5,6 @@ Core smart contracts powering the Medusa Network. Includes inheritable contracts
 
 ```ml
 src
-├── ArbSys - "System calls for Arbitrum"
 ├── BN254EncryptionOracle - "An implementation of EncryptionOracle that supports BN254"
 ├── Bn128 - "A library for operations over BN128 (a.k.a. BN254)"
 ├── DKG - "Implementation of a distributed key generation mediated by a smart contract"

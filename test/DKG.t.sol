@@ -2,8 +2,6 @@
 pragma solidity ^0.8.19;
 
 import {
-    DealBundle,
-    IDKG,
     DKG,
     NotAuthorized,
     NotRegistered,
@@ -13,19 +11,25 @@ import {
     InvalidSharesCount,
     InvalidCommitmentsCount
 } from "../src/DKG.sol";
-import {DKGFactory} from "../src/DKGFactory.sol";
-import {Bn128, G1Point, DleqProof} from "../src/Bn128.sol";
-import "forge-std/Test.sol";
 
-contract DKGTest is Test {
+import {DealBundle} from "../src/interfaces/IDKG.sol";
+import {PermissionedDKGMembership} from "../src/PermissionedDKGMembership.sol";
+import {Bn128, G1Point, DleqProof} from "../src/utils/Bn128.sol";
+import {MedusaTest} from "./MedusaTest.sol";
+
+contract DKGTest is MedusaTest {
     DKG private dkg;
-    DKGFactory private factory;
+    PermissionedDKGMembership private membership;
+
+    address private authorizedNode = makeAddr("authorizedNode");
+    address private notAuthorizedNode = makeAddr("notAuthorizedNode");
+
     G1Point private p1;
     FakeDleq private fakeProof;
 
     function setUp() public {
-        factory = new DKGFactory();
-        dkg = new DKG(factory);
+        membership = new PermissionedDKGMembership(owner);
+        dkg = new DKG(membership);
         p1 = randomPoint(1);
         fakeProof = fakeDleq();
     }
@@ -67,7 +71,8 @@ contract DKGTest is Test {
         for (uint256 i = 0; i < dkg.MAX_PARTICIPANTS(); i++) {
             address nextParticipant = address(uint160(i + 1));
             G1Point memory nextKey = randomPoint(i + 1);
-            factory.addAuthorizedNode(nextParticipant);
+            vm.prank(owner);
+            membership.addAuthorizedNode(nextParticipant);
             vm.prank(nextParticipant);
             dkg.registerParticipant(nextKey);
             assertEq(dkg.numberParticipants(), i + 1);
@@ -80,17 +85,16 @@ contract DKGTest is Test {
     }
 
     function testCannotRegisterIfNotAuthorized() public {
-        address nextParticipant = address(uint160(1));
-        vm.prank(nextParticipant);
+        vm.prank(notAuthorizedNode);
         vm.expectRevert(NotAuthorized.selector);
         dkg.registerParticipant(p1);
     }
 
     function testCannotRegisterIfIncorrectPhase() public {
-        address nextParticipant = address(uint160(1));
-        factory.addAuthorizedNode(nextParticipant);
+        vm.prank(owner);
+        membership.addAuthorizedNode(authorizedNode);
         vm.roll(dkg.registrationTime());
-        vm.prank(nextParticipant);
+        vm.prank(authorizedNode);
         vm.expectRevert(InvalidPhase.selector);
         dkg.registerParticipant(p1);
     }
@@ -100,27 +104,29 @@ contract DKGTest is Test {
         for (uint256 i = 0; i < dkg.MAX_PARTICIPANTS(); i++) {
             nextParticipant = address(uint160(i + 1));
             G1Point memory p = randomPoint(i + 1);
-            factory.addAuthorizedNode(nextParticipant);
+            vm.prank(owner);
+            membership.addAuthorizedNode(nextParticipant);
             vm.prank(nextParticipant);
             dkg.registerParticipant(p);
         }
         nextParticipant = address(uint160(dkg.MAX_PARTICIPANTS()));
-        factory.addAuthorizedNode(nextParticipant);
+        vm.prank(owner);
+        membership.addAuthorizedNode(nextParticipant);
         vm.prank(nextParticipant);
         vm.expectRevert(ParticipantLimit.selector);
         dkg.registerParticipant(p1);
     }
 
     function testCannotRegisterMoreThanOnce() public {
-        address nextParticipant = address(uint160(1));
-        factory.addAuthorizedNode(nextParticipant);
+        vm.prank(owner);
+        membership.addAuthorizedNode(authorizedNode);
 
-        vm.prank(nextParticipant);
+        vm.prank(authorizedNode);
         dkg.registerParticipant(p1);
 
         G1Point memory p2 = randomPoint(10);
         vm.expectRevert(AlreadyRegistered.selector);
-        vm.prank(nextParticipant);
+        vm.prank(authorizedNode);
         dkg.registerParticipant(p2);
     }
 
@@ -129,86 +135,87 @@ contract DKGTest is Test {
     }
 
     function testCannotSubmitDealBundleIfNotRegistered() public {
-        address nextParticipant = address(uint160(1));
-
-        vm.prank(nextParticipant);
+        vm.prank(notAuthorizedNode);
         vm.expectRevert(NotRegistered.selector);
         dkg.submitDealBundle(emptyDealBundle());
     }
 
     function testCannotSubmitDealBundleIfInvalidPhase() public {
-        address nextParticipant = address(uint160(1));
-        factory.addAuthorizedNode(nextParticipant);
-        vm.prank(nextParticipant);
+        vm.prank(owner);
+        membership.addAuthorizedNode(authorizedNode);
+        vm.prank(authorizedNode);
         dkg.registerParticipant(p1);
 
         vm.roll(dkg.dealTime());
-        vm.prank(nextParticipant);
+        vm.prank(authorizedNode);
         vm.expectRevert(InvalidPhase.selector);
         dkg.submitDealBundle(emptyDealBundle());
     }
 
     function testCannotSubmitDealBundleWithInvalidSharesCount() public {
-        address nextParticipant = address(uint160(1));
-        factory.addAuthorizedNode(nextParticipant);
-        vm.prank(nextParticipant);
+        vm.prank(owner);
+        membership.addAuthorizedNode(authorizedNode);
+        vm.prank(authorizedNode);
         dkg.registerParticipant(p1);
 
         DealBundle memory bundle = emptyDealBundle();
         bundle.encryptedShares = new uint256[](2); // bundle with 2 shares
 
         vm.roll(dkg.registrationTime());
-        vm.prank(nextParticipant);
+        vm.prank(authorizedNode);
         vm.expectRevert(InvalidSharesCount.selector);
         dkg.submitDealBundle(bundle);
     }
 
     function testCannotSubmitDealBundleWithInvalidCommitmentsCount() public {
-        address nextParticipant = address(uint160(1));
-        factory.addAuthorizedNode(nextParticipant);
-        vm.prank(nextParticipant);
+        vm.prank(owner);
+        membership.addAuthorizedNode(authorizedNode);
+        vm.prank(authorizedNode);
         dkg.registerParticipant(p1);
 
         DealBundle memory bundle = emptyDealBundle();
         bundle.encryptedShares = new uint256[](1); // bundle with 1 share and 0 commitments
 
         vm.roll(dkg.registrationTime());
-        vm.prank(nextParticipant);
+        vm.prank(authorizedNode);
         vm.expectRevert(InvalidCommitmentsCount.selector);
         dkg.submitDealBundle(bundle);
     }
 
     function testCannotSubmitComplaintBundleIfNotRegistered() public {
-        address nextParticipant = address(uint160(1));
         DealBundle memory bundle = emptyDealBundle();
-        vm.prank(nextParticipant);
+        vm.prank(authorizedNode);
         vm.expectRevert(NotRegistered.selector);
         dkg.submitComplaintBundle(
-            address(uint160(2)), bundle, p1, fakeProof.proof
+            makeAddr("otherNode"), bundle, p1, fakeProof.proof
         );
     }
 
     function testCannotSubmitComplaintBundleIfInvalidPhase() public {
-        address nextParticipant = address(uint160(1));
-        factory.addAuthorizedNode(nextParticipant);
-        vm.prank(nextParticipant);
+        vm.prank(owner);
+        membership.addAuthorizedNode(authorizedNode);
+        vm.prank(authorizedNode);
         dkg.registerParticipant(p1);
         vm.roll(dkg.complaintTime());
-        vm.prank(nextParticipant);
+        vm.prank(authorizedNode);
         DealBundle memory bundle = emptyDealBundle();
         vm.expectRevert(InvalidPhase.selector);
         dkg.submitComplaintBundle(
-            address(uint160(2)), bundle, p1, fakeProof.proof
+            makeAddr("otherNode"), bundle, p1, fakeProof.proof
         );
     }
 
-    function testCannotSubmitCOmplaintWithInvalidBundle() public {
-        address nextParticipant = address(uint160(1));
-        factory.addAuthorizedNode(nextParticipant);
-        vm.prank(nextParticipant);
-        dkg.registerParticipant(p1);
-        // go to DKG phase by going to the time registration ends
-        vm.roll(dkg.registrationTime());
-        vm.prank(nextParticipant);
-    }
+    // TODO
+    // function testCannotSubmitComplaintWithInvalidBundle() public {
+    //     vm.prank(owner);
+    //     membership.addAuthorizedNode(authorizedNode);
+    //     vm.prank(authorizedNode);
+    //     dkg.registerParticipant(p1);
+    //
+    //     vm.roll(dkg.dealTime());
+    //     vm.prank(authorizedNode);
+    //     dkg.submitComplaintBundle(
+    //         makeAddr("otherNode"), emptyDealBundle(), p1, fakeProof.proof
+    //     );
+    // }
 }

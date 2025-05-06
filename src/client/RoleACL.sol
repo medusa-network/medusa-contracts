@@ -5,9 +5,9 @@ import {
     IEncryptionOracle as IO,
     Ciphertext,
     ReencryptedCipher
-} from "./interfaces/IEncryptionOracle.sol";
-import {IEncryptionClient} from "./interfaces/IEncryptionClient.sol";
-import {G1Point} from "./Bn128.sol";
+} from "../interfaces/IEncryptionOracle.sol";
+import {IEncryptionClient} from "../interfaces/IEncryptionClient.sol";
+import {G1Point} from "../utils/Bn128.sol";
 import {AccessControlEnumerable} from
     "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import {
